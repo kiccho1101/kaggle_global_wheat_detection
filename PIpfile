@@ -30,6 +30,9 @@ plotly = "*"
 pandas-profiling = {extras = ["html", "notebook"],version = "*"}
 nltk = "*"
 mlflow = "*"
+albumentations = "*"
+opencv-python = "*"
+nptyping = "*"
 
 [requires]
 python_version = "3.8"
