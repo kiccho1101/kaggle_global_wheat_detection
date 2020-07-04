@@ -1,0 +1,38 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+black = "*"
+flake8 = "*"
+jupyter = "*"
+mypy = "*"
+jupyterlab = "*"
+jupytext = "*"
+jupyter-lsp = "*"
+python-language-server = {extras = ["all"],version = "*"}
+
+[packages]
+xgboost = "*"
+torch = "*"
+transformers = "*"
+torchvision = "*"
+lightgbm = "*"
+catboost = "*"
+requests = "*"
+skorch = "*"
+scikit-learn = "*"
+mecab-python3 = "*"
+seaborn = "*"
+matplotlib = "*"
+plotly = "*"
+pandas-profiling = {extras = ["html", "notebook"],version = "*"}
+nltk = "*"
+mlflow = "*"
+
+[requires]
+python_version = "3.8"
+
+[pipenv]
+allow_prereleases = true
