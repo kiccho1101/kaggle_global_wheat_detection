@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 
 import albumentations as A
 
-from typing import Optional, Any, Dict, Tuple, List
+from typing import Optional, Any, Dict, Tuple, List, Union
 from nptyping import NDArray
 
 
@@ -35,7 +35,7 @@ class WheatDataset(Dataset):
 
     def __getitem__(
         self, index: int
-    ) -> Tuple[NDArray[(1024, 1024, 3), np.int], Dict[str, Any], str]:
+    ) -> Union[torch.Tensor, NDArray[(1024, 1024, 3), np.int], Dict[str, Any], str]:
         image_id: str = self.image_ids[index]
         records: pd.DataFrame = self.df[self.df["image_id"] == image_id]
 
