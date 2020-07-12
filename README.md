@@ -6,7 +6,7 @@
 
 2. python環境構築方法
 
-pipenvを使う場合はコマンド一発でできる
+### pipenvを使う場合はコマンド一発でできる
 
 ```bash
 pipenv install --skip-lock
@@ -14,3 +14,9 @@ pipenv install --skip-lock
 ```
 
 その他のパッケージ管理ライブラリを使っている場合は、Pipfile内からパッケージ名が見られるので、必要に応じてインストールしてね
+
+### CUDA10.1用の環境構築
+
+```
+pip install -r requirements.txt  -f https://download.pytorch.org/whl/torch_stable.html
+```
