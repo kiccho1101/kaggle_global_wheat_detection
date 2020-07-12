@@ -20,3 +20,8 @@ pipenv install --skip-lock
 ```
 pip install -r requirements.txt  -f https://download.pytorch.org/whl/torch_stable.html
 ```
+
+## チケット管理
+
+- チケット管理は[ZenHub](https://chrome.google.com/webstore/detail/zenhub-for-github/ogcgkffhplmphkaahpmffcafajaocjbd)でやりたい
+- chromeのextension入れるとすごい便利。
