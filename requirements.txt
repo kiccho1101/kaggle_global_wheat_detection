@@ -1,0 +1,14 @@
+opencv-python
+torch==1.5.1+cu101
+torchvision==0.6.1+cu101
+scikit-learn
+seaborn
+matplotlib
+mlflow
+albumentations
+nptyping
+effdet
+pycocotools
+jupyter
+timm
+omegaconf
