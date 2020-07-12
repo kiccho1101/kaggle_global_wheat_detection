@@ -6,6 +6,8 @@ from sklearn.model_selection import StratifiedKFold
 
 from nptyping import NDArray
 
+from typing import Tuple
+
 
 class WheatData:
     def __init__(self, DIR_INPUT: str):
@@ -14,6 +16,21 @@ class WheatData:
         self.image_ids: NDArray[np.object] = df["image_id"].unique()
         self.df: pd.DataFrame = df
         self.df_folds: pd.DataFrame = self._get_df_folds(df)
+
+    def get_fold(
+        self, fold_num: int
+    ) -> Tuple[NDArray[np.object], pd.DataFrame, NDArray[np.object], pd.DataFrame]:
+        train_image_ids: NDArray[np.object] = self.df_folds[
+            self.df_folds["fold"] != fold_num
+        ]["image_id"].values
+        train_df: pd.DataFrame = self.df[self.df["image_id"].isin(train_image_ids)]
+
+        val_image_ids: NDArray[np.object] = self.df_folds[
+            self.df_folds["fold"] == fold_num
+        ]["image_id"].values
+        val_df: pd.DataFrame = self.df[self.df["image_id"].isin(val_image_ids)]
+
+        return train_image_ids, train_df, val_image_ids, val_df
 
     @staticmethod
     def _read_df(DIR_INPUT: str) -> pd.DataFrame:

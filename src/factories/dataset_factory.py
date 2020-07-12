@@ -19,15 +19,15 @@ class WheatDataset(Dataset):
     def __init__(
         self,
         DIR_INPUT: str,
-        df: pd.DataFrame,
         image_ids: NDArray[np.object],
-        type: str = "train",
+        df: pd.DataFrame,
+        mode: str = "train",
         transforms: Optional[A.Compose] = None,
     ):
         self.df: pd.DataFrame = df
         self.image_ids: NDArray[np.object] = image_ids
-        self.type: str = type
-        self.image_dir: str = f"{DIR_INPUT}/{type}"
+        self.mode: str = mode
+        self.image_dir: str = f"{DIR_INPUT}/{mode}"
         self.transforms: Optional[A.Compose] = transforms
 
     def __len__(self) -> int:
@@ -86,7 +86,7 @@ def get_wheat_dataset(
     DIR_INPUT: str,
     df: pd.DataFrame,
     image_ids: NDArray[np.object],
-    type: str = "train",
+    mode: str = "train",
     transforms: Optional[A.Compose] = None,
 ):
-    return WheatDataset(DIR_INPUT, df, image_ids, type=type, transforms=transforms)
+    return WheatDataset(DIR_INPUT, df, image_ids, mode=mode, transforms=transforms)
