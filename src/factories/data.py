@@ -10,8 +10,8 @@ from typing import Tuple
 
 
 class WheatData:
-    def __init__(self, DIR_INPUT: str):
-        df: pd.DataFrame = self._read_df(DIR_INPUT)
+    def __init__(self, INPUT_DIR: str):
+        df: pd.DataFrame = self._read_df(INPUT_DIR)
 
         self.image_ids: NDArray[np.object] = df["image_id"].unique()
         self.df: pd.DataFrame = df
@@ -33,14 +33,14 @@ class WheatData:
         return train_image_ids, train_df, val_image_ids, val_df
 
     @staticmethod
-    def _read_df(DIR_INPUT: str) -> pd.DataFrame:
+    def _read_df(INPUT_DIR: str) -> pd.DataFrame:
         def _expand_bbox(x):
             r = np.array(re.findall("([0-9]+[.]?[0-9]*)", x))
             if len(r) == 0:
                 r = [-1, -1, -1, -1]
             return r
 
-        df = pd.read_csv(f"{DIR_INPUT}/train.csv")
+        df = pd.read_csv(f"{INPUT_DIR}/train.csv")
         for col in ["x", "y", "w", "h"]:
             df[col] = -1
         df[["x", "y", "w", "h"]] = np.stack(df["bbox"].apply(lambda x: _expand_bbox(x)))
@@ -76,5 +76,5 @@ class WheatData:
         return df_folds
 
 
-def get_data(DIR_INPUT: str) -> WheatData:
-    return WheatData(DIR_INPUT)
+def get_data(INPUT_DIR: str) -> WheatData:
+    return WheatData(INPUT_DIR)

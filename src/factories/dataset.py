@@ -18,7 +18,7 @@ from nptyping import NDArray
 class WheatDataset(Dataset):
     def __init__(
         self,
-        DIR_INPUT: str,
+        INPUT_DIR: str,
         image_ids: NDArray[np.object],
         df: pd.DataFrame,
         mode: str = "train",
@@ -27,7 +27,7 @@ class WheatDataset(Dataset):
         self.df: pd.DataFrame = df
         self.image_ids: NDArray[np.object] = image_ids
         self.mode: str = mode
-        self.image_dir: str = f"{DIR_INPUT}/{mode}"
+        self.image_dir: str = f"{INPUT_DIR}/{mode}"
         self.transforms: Optional[A.Compose] = transforms
 
     def __len__(self) -> int:
@@ -83,10 +83,10 @@ class WheatDataset(Dataset):
 
 
 def get_wheat_dataset(
-    DIR_INPUT: str,
+    INPUT_DIR: str,
     df: pd.DataFrame,
     image_ids: NDArray[np.object],
     mode: str = "train",
     transforms: Optional[A.Compose] = None,
 ):
-    return WheatDataset(DIR_INPUT, df, image_ids, mode=mode, transforms=transforms)
+    return WheatDataset(INPUT_DIR, df, image_ids, mode=mode, transforms=transforms)

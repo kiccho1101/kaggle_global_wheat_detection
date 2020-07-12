@@ -33,6 +33,10 @@ mlflow = "*"
 albumentations = "*"
 opencv-python = "*"
 nptyping = "*"
+effdet = "*"
+timm = "*"
+omegaconf = "*"
+pycocotools = "*"
 
 [requires]
 python_version = "3.8"
