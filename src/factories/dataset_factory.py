@@ -5,6 +5,8 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+from sklearn.model_selection import StratifiedKFold
+
 import torch
 from torch.utils.data import Dataset
 
@@ -29,6 +31,7 @@ class WheatDataset(Dataset):
         self.df: pd.DataFrame = df
         self.image_dir: str = f"{DIR_INPUT}/{mode}"
         self.transforms: Optional[A.Compose] = transforms
+        self.df_folds: pd.DataFrame = self._get_df_folds(df)
 
     def __len__(self) -> int:
         return self.image_ids.shape[0]
@@ -101,6 +104,28 @@ class WheatDataset(Dataset):
         )
         area = torch.as_tensor(area, dtype=torch.float32)
         return area
+
+    @staticmethod
+    def _get_df_folds(df: pd.DataFrame) -> pd.DataFrame:
+        df_folds: pd.DataFrame = (
+            df.groupby(["image_id", "source"])["image_id"]
+            .count()
+            .rename("bbox_count")
+            .reset_index()
+        )
+
+        df_folds["stratify_group"] = df_folds.apply(
+            lambda x: "{}_{}".format(x.source, x.bbox_count // 15), axis=1
+        )
+
+        df_folds["fold"] = 1
+        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        for fold_num, (train_idx, val_idx) in enumerate(
+            skf.split(X=df_folds.index, y=df_folds["stratify_group"])
+        ):
+            df_folds.loc[df_folds.iloc[val_idx].index, "fold"] = fold_num
+
+        return df_folds
 
 
 def get_wheat_dataset(
