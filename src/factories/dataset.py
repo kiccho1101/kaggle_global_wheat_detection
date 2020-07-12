@@ -1,33 +1,33 @@
-# %%
 import re
 import pandas as pd
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+from sklearn.model_selection import StratifiedKFold
+
 import torch
 from torch.utils.data import Dataset
 
 import albumentations as A
-from albumentations.pytorch.transforms import ToTensorV2
 
-from typing import Optional, Any, Dict, Tuple
+from typing import Optional, Any, Dict, Tuple, List, Union
 from nptyping import NDArray
 
 
 class WheatDataset(Dataset):
     def __init__(
         self,
-        DIR_INPUT: str,
+        INPUT_DIR: str,
+        image_ids: NDArray[np.object],
+        df: pd.DataFrame,
         mode: str = "train",
         transforms: Optional[A.Compose] = None,
     ):
-
-        df: pd.DataFrame = self._read_data(DIR_INPUT, mode)
-
-        self.image_ids: NDArray[np.object] = df["image_id"].unique()
         self.df: pd.DataFrame = df
-        self.image_dir: str = f"{DIR_INPUT}/{mode}"
+        self.image_ids: NDArray[np.object] = image_ids
+        self.mode: str = mode
+        self.image_dir: str = f"{INPUT_DIR}/{mode}"
         self.transforms: Optional[A.Compose] = transforms
 
     def __len__(self) -> int:
@@ -35,7 +35,7 @@ class WheatDataset(Dataset):
 
     def __getitem__(
         self, index: int
-    ) -> Tuple[NDArray[(1024, 1024, 3), np.int], Dict[str, Any], str]:
+    ) -> Union[torch.Tensor, NDArray[(1024, 1024, 3), np.int], Dict[str, Any], str]:
         image_id: str = self.image_ids[index]
         records: pd.DataFrame = self.df[self.df["image_id"] == image_id]
 
@@ -65,27 +65,6 @@ class WheatDataset(Dataset):
             ).permute(1, 0)
         return image, target, image_id
 
-    @staticmethod
-    def _read_data(DIR_INPUT: str, mode: str = "train") -> pd.DataFrame:
-        def _expand_bbox(x):
-            r = np.array(re.findall("([0-9]+[.]?[0-9]*)", x))
-            if len(r) == 0:
-                r = [-1, -1, -1, -1]
-            return r
-
-        df = pd.read_csv(f"{DIR_INPUT}/{mode}.csv")
-        for col in ["x", "y", "w", "h"]:
-            df[col] = -1
-        df[["x", "y", "w", "h"]] = np.stack(df["bbox"].apply(lambda x: _expand_bbox(x)))
-        df.drop(columns=["bbox"], axis=1, inplace=True)
-        for col in ["x", "y", "w", "h"]:
-            df[col] = df[col].astype(np.float)
-        df["x_max"] = df["x"] + df["w"]
-        df["y_max"] = df["y"] + df["h"]
-
-        df.rename({"x": "x_min", "y": "y_min"}, axis=1, inplace=True)
-        return df
-
     def _read_image(self, image_id: str) -> np.ndarray:
         image: np.ndarray = cv2.imread(
             f"{self.image_dir}/{image_id}.jpg", cv2.IMREAD_COLOR
@@ -104,6 +83,10 @@ class WheatDataset(Dataset):
 
 
 def get_wheat_dataset(
-    DIR_INPUT: str, mode: str = "train", transforms: Optional[A.Compose] = None
+    INPUT_DIR: str,
+    df: pd.DataFrame,
+    image_ids: NDArray[np.object],
+    mode: str = "train",
+    transforms: Optional[A.Compose] = None,
 ):
-    return WheatDataset(DIR_INPUT, mode=mode, transforms=transforms)
+    return WheatDataset(INPUT_DIR, df, image_ids, mode=mode, transforms=transforms)

@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
+import torch
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
-from typing import Tuple, Any
+from typing import Tuple, Any, Union
 from nptyping import NDArray
 
 from .factories import WheatDataset
@@ -13,6 +14,9 @@ def imshow_with_bboxes(
     bboxes: NDArray[(Any, 4), np.float],
     figsize: Tuple[int, int] = (7, 7),
 ):
+    if isinstance(img, torch.Tensor):
+        img = img.permute(1, 2, 0).cpu().numpy()
+
     for bbox in bboxes:
         img = cv2.rectangle(
             img.copy(),
