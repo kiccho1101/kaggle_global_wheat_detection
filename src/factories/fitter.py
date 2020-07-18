@@ -5,8 +5,11 @@ from torch.utils.data import DataLoader
 import time
 import os
 import glob
+from tqdm.autonotebook import tqdm
+import numpy as np
 
-from typing import Dict, Any, Callable
+from nptyping import NDArray
+from typing import Dict, Any, Callable, List
 
 
 class Fitter:
@@ -92,19 +95,25 @@ class Fitter:
         summary_loss = self.loss_fn
 
         start = time.time()
-        for step, (images, targets, iamge_ids) in enumerate(train_loader):
+
+        for step, (images, targets, _) in tqdm(
+            enumerate(train_loader), total=len(train_loader)
+        ):
             if self.verbose:
                 print(
                     f"Train Step {step}/{len(train_loader)}, "
                     + f"summary_loss: {summary_loss.avg:.5f}, "
                     + f"time: {(time.time() - start):.5f}",
-                    end="\r",
                 )
-            images = torch.stack(images)
+            images: NDArray[(4, 3, 512, 512), np.int] = torch.stack(images)
             images = images.to(self.device).float()
             batch_size = images.shape[0]
-            bboxes = [target["bboxes"].to(self.device).float() for target in targets]
-            labels = [target["labels"].to(self.device).float() for target in targets]
+            bboxes: List[NDArray[(Any, Any, 4), np.int]] = [
+                target["bboxes"].to(self.device).float() for target in targets
+            ]
+            labels: List[NDArray[(Any, Any, 4), np.int]] = [
+                target["labels"].to(self.device).float() for target in targets
+            ]
 
             target_res = {"bbox": bboxes, "cls": labels}
 
@@ -138,12 +147,18 @@ class Fitter:
                 images = torch.stack(images)
                 batch_size = images.shape[0]
                 images = images.to(self.device).float()
-                boxes = [target["boxes"].to(self.device).float() for target in targets]
-                labels = [
+                bboxes: List[NDArray[(Any, Any, 4), np.int]] = [
+                    target["bboxes"].to(self.device).float() for target in targets
+                ]
+                labels: List[NDArray[(Any, Any, 4), np.int]] = [
                     target["labels"].to(self.device).float() for target in targets
                 ]
 
-                loss, _, _ = self.model(images, boxes, labels)
+                target_res = {"bbox": bboxes, "cls": labels}
+
+                outputs, _, _ = self.model(images, target_res)
+                loss = outputs["loss"]
+
                 summary_loss.update(loss.detach().item(), batch_size)
 
         return summary_loss
