@@ -57,13 +57,19 @@ class WheatDataset(Dataset):
         }
 
         if self.transforms:
-            sample = self.transforms(
-                **{"image": image, "bboxes": target["bboxes"], "labels": labels}
-            )
-            image = sample["image"]
-            target["bboxes"] = torch.tensor(sample["bboxes"])
-            target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][:, [1, 0, 3, 2]]
-            target["labels"] = torch.stack(sample["labels"])
+            # Run the iteration until we find non-empty bbox
+            for _ in range(1000):
+                sample = self.transforms(
+                    **{"image": image, "bboxes": target["bboxes"], "labels": labels}
+                )
+                if len(sample["bboxes"]) > 0:
+                    image = sample["image"]
+                    target["bboxes"] = torch.tensor(sample["bboxes"])
+                    target["labels"] = torch.stack(sample["labels"])
+                    target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][
+                        :, [1, 0, 3, 2]
+                    ]  # xyxy -> yxyx
+                    break
 
         return image, target, image_id
 

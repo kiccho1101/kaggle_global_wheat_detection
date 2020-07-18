@@ -105,8 +105,8 @@ class Fitter:
                     + f"summary_loss: {summary_loss.avg:.5f}, "
                     + f"time: {(time.time() - start):.5f}",
                 )
-            images: NDArray[(4, 3, 512, 512), np.int] = torch.stack(images)
-            images = images.to(self.device).float()
+            images = torch.stack(images)
+            images: NDArray[(4, 3, 512, 512), np.int] = images.to(self.device).float()
             batch_size = images.shape[0]
             bboxes: List[NDArray[(Any, 4), np.int]] = [
                 target["bboxes"].to(self.device).float() for target in targets
