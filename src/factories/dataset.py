@@ -58,7 +58,7 @@ class WheatDataset(Dataset):
 
         if self.transforms:
             # Run the iteration until we find non-empty bbox
-            for _ in range(1000):
+            while True:
                 sample = self.transforms(
                     **{"image": image, "bboxes": target["bboxes"], "labels": labels}
                 )

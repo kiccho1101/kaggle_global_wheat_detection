@@ -67,7 +67,7 @@ class WheatData:
         )
 
         df_folds["fold"] = 1
-        skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
         for fold_num, (train_idx, val_idx) in enumerate(
             skf.split(X=df_folds.index, y=df_folds["stratify_group"])
         ):

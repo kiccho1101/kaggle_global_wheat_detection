@@ -6,6 +6,7 @@ from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
     get_data,
     get_wheat_dataset,
+    get_wheat_dataloader,
     get_transforms,
     get_fitter,
     get_average_meter,
@@ -13,7 +14,6 @@ from src.factories import (
 )
 import torch
 import torch.utils
-from torch.utils.data.sampler import SequentialSampler, RandomSampler
 
 
 config = Config()
@@ -26,35 +26,15 @@ effdet_path = f"{WORK_DIR}/input/efficientdet/efficientdet_d5-ef44aea8.pth"
 data: WheatData = get_data(INPUT_DIR)
 train_image_ids, train_df, val_image_ids, val_df = data.get_fold(0)
 
-train_ds: WheatDataset = get_wheat_dataset(
+train_dataset: WheatDataset = get_wheat_dataset(
     INPUT_DIR, train_image_ids, train_df, "train", transforms.get_train_transforms()
 )
-valid_ds: WheatDataset = get_wheat_dataset(
+valid_dataset: WheatDataset = get_wheat_dataset(
     INPUT_DIR, val_image_ids, val_df, "train", transforms.get_valid_transforms()
 )
 
-
-def collate_fn(batch):
-    return tuple(zip(*batch))
-
-
-train_loader = torch.utils.data.DataLoader(
-    train_ds,
-    batch_size=config.batch_size,
-    sampler=RandomSampler(train_ds),
-    pin_memory=True,
-    num_workers=config.num_workers,
-    collate_fn=collate_fn,
-)
-valid_loader = torch.utils.data.DataLoader(
-    valid_ds,
-    batch_size=config.batch_size,
-    num_workers=config.num_workers,
-    shuffle=False,
-    sampler=SequentialSampler(valid_ds),
-    pin_memory=False,
-    collate_fn=collate_fn,
-)
+train_loader = get_wheat_dataloader(train_dataset, config, "train")
+valid_loader = get_wheat_dataloader(valid_dataset, config, "valid")
 
 device = torch.device("cuda")
 
@@ -66,15 +46,10 @@ fitter: Fitter = get_fitter(
     INPUT_DIR=INPUT_DIR,
     model=model,
     device=device,
-    n_epochs=config.n_epochs,
-    lr=config.lr,
     loss_fn=get_average_meter(),
-    step_scheduler=config.step_scheduler,
-    validation_scheduler=config.validation_scheduler,
-    scheduler_class=config.SchedulerClass,
-    scheduler_params=config.scheduler_params,
-    verbose=config.verbose,
-    verbose_step=config.verbose_step,
+    config=config,
 )
 
 fitter.fit(train_loader, valid_loader)
+
+# %%
