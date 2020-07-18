@@ -150,7 +150,7 @@ class Fitter:
                 bboxes: List[NDArray[(Any, 4), np.int]] = [
                     target["bboxes"].to(self.device).float() for target in targets
                 ]
-                labels: List[NDArray[(Any, 4), np.int]] = [
+                labels: List[NDArray[(Any), np.int]] = [
                     target["labels"].to(self.device).float() for target in targets
                 ]
 
