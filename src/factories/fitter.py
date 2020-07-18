@@ -51,7 +51,7 @@ class Fitter:
         self.log(f"Fitter prepared. Device is {self.device}")
 
     def fit(self, train_loader: DataLoader, valid_loader: DataLoader) -> None:
-        for e in range(self.n_epochs):
+        for _ in range(self.n_epochs):
             if self.verbose:
                 lr = self.optimizer.param_groups[0]["lr"]
                 timestamp = datetime.datetime.now().isoformat()
@@ -103,12 +103,16 @@ class Fitter:
             images = torch.stack(images)
             images = images.to(self.device).float()
             batch_size = images.shape[0]
-            bboxes = [target["bboxes"].to(self.device) for target in targets]
-            labels = [target["labels"].to(self.device) for target in targets]
+            bboxes = [target["bboxes"].to(self.device).float() for target in targets]
+            labels = [target["labels"].to(self.device).float() for target in targets]
+
+            target_res = {"bbox": bboxes, "cls": labels}
 
             self.optimizer.zero_grad()
 
-            loss, _, _ = self.model(images, bboxes, labels)
+            outputs = self.model(images, target_res)
+            loss = outputs["loss"]
+
             loss.backward()
             summary_loss.update(loss.detach().item(), batch_size)
             self.optimizer.step()

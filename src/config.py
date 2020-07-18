@@ -2,7 +2,7 @@ import torch
 
 
 class Config:
-    num_workers = 2
+    num_workers = 0
     batch_size = 4
     n_epochs = 3
     lr = 0.0002
