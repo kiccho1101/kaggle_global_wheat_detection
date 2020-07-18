@@ -57,12 +57,14 @@ class WheatDataset(Dataset):
         }
 
         if self.transforms:
-            sample = {"image": image, "bboxes": target["bboxes"], "labels": labels}
-            sample = self.transforms(**sample)
+            sample = self.transforms(
+                **{"image": image, "bboxes": target["bboxes"], "labels": labels}
+            )
             image = sample["image"]
-            target["bboxes"] = torch.stack(
-                tuple(map(torch.tensor, zip(*sample["bboxes"])))
-            ).permute(1, 0)
+            target["bboxes"] = torch.tensor(sample["bboxes"])
+            target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][:, [1, 0, 3, 2]]
+            target["labels"] = torch.stack(sample["labels"])
+
         return image, target, image_id
 
     def _read_image(self, image_id: str) -> np.ndarray:
