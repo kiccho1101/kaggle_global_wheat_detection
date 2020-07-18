@@ -108,10 +108,10 @@ class Fitter:
             images: NDArray[(4, 3, 512, 512), np.int] = torch.stack(images)
             images = images.to(self.device).float()
             batch_size = images.shape[0]
-            bboxes: List[NDArray[(Any, Any, 4), np.int]] = [
+            bboxes: List[NDArray[(Any, 4), np.int]] = [
                 target["bboxes"].to(self.device).float() for target in targets
             ]
-            labels: List[NDArray[(Any, Any, 4), np.int]] = [
+            labels: List[NDArray[(Any), np.int]] = [
                 target["labels"].to(self.device).float() for target in targets
             ]
 
@@ -147,10 +147,10 @@ class Fitter:
                 images = torch.stack(images)
                 batch_size = images.shape[0]
                 images = images.to(self.device).float()
-                bboxes: List[NDArray[(Any, Any, 4), np.int]] = [
+                bboxes: List[NDArray[(Any, 4), np.int]] = [
                     target["bboxes"].to(self.device).float() for target in targets
                 ]
-                labels: List[NDArray[(Any, Any, 4), np.int]] = [
+                labels: List[NDArray[(Any, 4), np.int]] = [
                     target["labels"].to(self.device).float() for target in targets
                 ]
 
