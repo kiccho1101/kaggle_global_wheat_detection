@@ -5,7 +5,7 @@ from effdet.efficientdet import HeadNet
 from typing import Optional
 
 
-def get_effdet_det(model_path: Optional[str] = None):
+def get_effdet(model_path: Optional[str] = None):
     config = get_efficientdet_config("tf_efficientdet_d5")
     if model_path is None:
         net = EfficientDet(config, pretrained_backbone=True)

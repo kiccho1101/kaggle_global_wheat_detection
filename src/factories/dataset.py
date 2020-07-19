@@ -57,12 +57,20 @@ class WheatDataset(Dataset):
         }
 
         if self.transforms:
-            sample = {"image": image, "bboxes": target["bboxes"], "labels": labels}
-            sample = self.transforms(**sample)
-            image = sample["image"]
-            target["bboxes"] = torch.stack(
-                tuple(map(torch.tensor, zip(*sample["bboxes"])))
-            ).permute(1, 0)
+            # Run the iteration until we find non-empty bbox
+            while True:
+                sample = self.transforms(
+                    **{"image": image, "bboxes": target["bboxes"], "labels": labels}
+                )
+                if len(sample["bboxes"]) > 0:
+                    image = sample["image"]
+                    target["bboxes"] = torch.tensor(sample["bboxes"])
+                    target["labels"] = torch.stack(sample["labels"])
+                    target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][
+                        :, [1, 0, 3, 2]
+                    ]  # xyxy -> yxyx
+                    break
+
         return image, target, image_id
 
     def _read_image(self, image_id: str) -> np.ndarray:

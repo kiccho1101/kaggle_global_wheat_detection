@@ -11,6 +11,10 @@
 ```bash
 pipenv install --skip-lock
 
+## Run cross validation
+
+```bash
+python cv_effdet.py
 ```
 
 その他のパッケージ管理ライブラリを使っている場合は、Pipfile内からパッケージ名が見られるので、必要に応じてインストールしてね
