@@ -54,7 +54,6 @@ class Fitter:
 
             with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
                 summary_loss = self._train_one_epoch(train_loader)
-
                 self.save(f"{self.log_path}/last-checkpoint_cv{self.cv_num}.bin")
 
                 summary_loss = self._validation(valid_loader)
@@ -74,7 +73,6 @@ class Fitter:
                     self.scheduler.step(metrics=summary_loss.avg)
 
                 self.epoch += 1
-        mlflow.end_run()
 
     def _train_one_epoch(self, train_loader: DataLoader):
         self.model.train()
