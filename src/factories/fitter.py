@@ -12,6 +12,8 @@ from src.config import Config
 
 from nptyping import NDArray
 from typing import Dict, Any, Callable, List
+import mlflow
+import mlflow.pytorch
 
 
 class Fitter:
@@ -125,7 +127,9 @@ class Fitter:
         return summary_loss
 
     def _validation(self, valid_loader: DataLoader):
-        self.model.eval()
+        # TODO: Find a way to execute this with eval mode
+        # self.model.eval()
+        self.model.train()
         summary_loss = self.loss_fn
         start = time.time()
         for step, (images, targets, _) in enumerate(valid_loader):
@@ -148,9 +152,12 @@ class Fitter:
                     target["labels"].to(self.device).float() for target in targets
                 ]
 
-                target_res = {"bbox": bboxes, "cls": labels}
+                target_res = {
+                    "bbox": bboxes,
+                    "cls": labels,
+                }
 
-                outputs, _, _ = self.model(images, target_res)
+                outputs = self.model(images, target_res)
                 loss = outputs["loss"]
 
                 summary_loss.update(loss.detach().item(), batch_size)

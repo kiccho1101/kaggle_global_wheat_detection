@@ -7,6 +7,7 @@
 # website: http://jupyter.org/
 
 output/*/*.txt
+output/*/*.bin
 dev.py
 
 input
