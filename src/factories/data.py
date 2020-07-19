@@ -2,6 +2,8 @@ import re
 import pandas as pd
 import numpy as np
 
+from src.config import Config
+
 from sklearn.model_selection import StratifiedKFold
 
 from nptyping import NDArray
@@ -67,7 +69,7 @@ class WheatData:
         )
 
         df_folds["fold"] = 1
-        skf = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+        skf = StratifiedKFold(n_splits=Config().n_folds, shuffle=True, random_state=42)
         for fold_num, (train_idx, val_idx) in enumerate(
             skf.split(X=df_folds.index, y=df_folds["stratify_group"])
         ):

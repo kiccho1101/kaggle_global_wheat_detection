@@ -48,29 +48,16 @@ class Fitter:
         self.scheduler = config.scheduler_class(
             self.optimizer, **config.scheduler_params
         )
-        self.log(f"Fitter prepared. Device is {self.device}")
 
     def fit(self, train_loader: DataLoader, valid_loader: DataLoader) -> None:
         for _ in range(self.config.n_epochs):
-            if self.config.verbose:
-                lr = self.optimizer.param_groups[0]["lr"]
-                timestamp = datetime.datetime.now().isoformat()
-                self.log(f"\n{timestamp}\nLR: {lr}")
 
             with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
-                start = time.time()
                 summary_loss = self._train_one_epoch(train_loader)
 
-                self.log(
-                    f"[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, time: {(time.time() - start):.5f}"
-                )
                 self.save(f"{self.log_path}/last-checkpoint.bin")
 
-                start = time.time()
                 summary_loss = self._validation(valid_loader)
-                self.log(
-                    f"[RESULT]: Val. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, time: {(time.time() - start):.5f}"
-                )
 
                 if summary_loss.avg < self.best_summary_loss:
                     self.best_summary_loss = summary_loss.avg
@@ -103,7 +90,6 @@ class Fitter:
                     f"Train Step {step}/{len(train_loader)}, "
                     + f"summary_loss: {summary_loss.avg:.5f}, "
                     + f"time: {(time.time() - start):.5f}",
-                    end="\r",
                 )
             images = torch.stack(images)
             images: NDArray[(self.config.batch_size, 3, 512, 512), np.int] = images.to(
@@ -151,7 +137,6 @@ class Fitter:
                         f"Val Step {step}/{len(valid_loader)}, "
                         + f"summary_loss: {summary_loss.avg:.5f}, "
                         + f"time: {(time.time() - start):.5f}",
-                        end="\r",
                     )
             with torch.no_grad():
                 images = torch.stack(images)

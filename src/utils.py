@@ -41,6 +41,6 @@ def start_mlflow(config: Config) -> Tuple[str, str]:
     experiment_id: str = mlflow.get_experiment_by_name(config.exp_name).experiment_id
     print("put the run name")
     run_name: str = input()
-    mlflow.start_run(experiment_id=config.exp_name, run_name=run_name)
+    mlflow.start_run(experiment_id=experiment_id, run_name=run_name)
     config.log_mlflow_params()
     return experiment_id, run_name
