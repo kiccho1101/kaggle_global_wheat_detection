@@ -22,6 +22,7 @@ class Fitter:
         self,
         WORK_DIR: str,
         INPUT_DIR: str,
+        cv_num: int,
         model: torch.nn.Module,
         device: torch.device,
         loss_fn: Any,
@@ -30,6 +31,7 @@ class Fitter:
         self.epoch: int = 0
         self.WORK_DIR: str = WORK_DIR
         self.INPUT_DIR: str = INPUT_DIR
+        self.cv_num: int = cv_num
         self.start_time: str = datetime.datetime.now().isoformat()
         self.log_path: str = f"{self.WORK_DIR}/output/{self.start_time}"
         Path(self.log_path).mkdir(parents=True, exist_ok=True)
@@ -48,21 +50,6 @@ class Fitter:
         )
         self.log(f"Fitter prepared. Device is {self.device}")
 
-    def start_mlflow(self):
-        try:
-            mlflow.end_run()
-        except Exception:
-            pass
-        if mlflow.get_experiment_by_name(self.config.exp_name) is None:
-            mlflow.create_experiment(self.config.exp_name)
-        self.experiment_id: str = mlflow.get_experiment_by_name(
-            self.config.exp_name
-        ).experiment_id
-        print("put the run name")
-        self.run_name: str = input()
-        mlflow.start_run(experiment_id=self.config.exp_name, run_name=self.run_name)
-        self.config.log_mlflow_params()
-
     def fit(self, train_loader: DataLoader, valid_loader: DataLoader) -> None:
         for _ in range(self.config.n_epochs):
             if self.config.verbose:
@@ -70,7 +57,7 @@ class Fitter:
                 timestamp = datetime.datetime.now().isoformat()
                 self.log(f"\n{timestamp}\nLR: {lr}")
 
-            with timer(f"epoch {self.epoch}", mlflow_on=True):
+            with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
                 start = time.time()
                 summary_loss = self._train_one_epoch(train_loader)
 
@@ -116,6 +103,7 @@ class Fitter:
                     f"Train Step {step}/{len(train_loader)}, "
                     + f"summary_loss: {summary_loss.avg:.5f}, "
                     + f"time: {(time.time() - start):.5f}",
+                    end="\r",
                 )
             images = torch.stack(images)
             images: NDArray[(self.config.batch_size, 3, 512, 512), np.int] = images.to(
@@ -142,7 +130,9 @@ class Fitter:
             if self.config.step_scheduler:
                 self.scheduler.step()
 
-            mlflow.log_metric(f"train_loss {self.epoch}", summary_loss.avg, step=step)
+            mlflow.log_metric(
+                f"cv_{self.cv_num}_train_loss_{self.epoch}", summary_loss.avg, step=step
+            )
 
         return summary_loss
 
@@ -152,7 +142,9 @@ class Fitter:
         self.model.train()
         summary_loss = self.loss_fn
         start = time.time()
-        for step, (images, targets, _) in enumerate(valid_loader):
+        for step, (images, targets, _) in tqdm(
+            enumerate(valid_loader), total=len(valid_loader)
+        ):
             if self.config.verbose:
                 if step % self.config.verbose_step == 0:
                     print(
@@ -182,7 +174,9 @@ class Fitter:
 
                 summary_loss.update(loss.detach().item(), batch_size)
 
-            mlflow.log_metric(f"valid_loss {self.epoch}", summary_loss.avg, step=step)
+            mlflow.log_metric(
+                f"cv_{self.cv_num}_valid_loss_{self.epoch}", summary_loss.avg, step=step
+            )
 
         return summary_loss
 
@@ -209,9 +203,10 @@ class Fitter:
 def get_fitter(
     WORK_DIR: str,
     INPUT_DIR: str,
+    cv_num: int,
     model: torch.nn.Module,
     device: torch.device,
     loss_fn: Any,
     config: Config,
 ) -> Fitter:
-    return Fitter(WORK_DIR, INPUT_DIR, model, device, loss_fn, config)
+    return Fitter(WORK_DIR, INPUT_DIR, cv_num, model, device, loss_fn, config)

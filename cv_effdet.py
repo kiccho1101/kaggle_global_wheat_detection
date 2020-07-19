@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 from src import Config
-from src.utils import timer
+from src.utils import timer, start_mlflow
 from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
     get_data,
@@ -28,6 +28,8 @@ effdet_path = f"{WORK_DIR}/input/efficientdet/efficientdet_d5-ef44aea8.pth"
 with timer("load raw data"):
     data: WheatData = get_data(INPUT_DIR)
 
+
+expriment_id, run_name = start_mlflow(config)
 for cv_num in range(3):
     with timer(f"CV No. {cv_num}"):
 
@@ -60,6 +62,7 @@ for cv_num in range(3):
             fitter: Fitter = get_fitter(
                 WORK_DIR=WORK_DIR,
                 INPUT_DIR=INPUT_DIR,
+                cv_num=cv_num,
                 model=model,
                 device=device,
                 loss_fn=get_average_meter(),
