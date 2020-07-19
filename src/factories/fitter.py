@@ -55,7 +55,7 @@ class Fitter:
             with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
                 summary_loss = self._train_one_epoch(train_loader)
 
-                self.save(f"{self.log_path}/last-checkpoint.bin")
+                self.save(f"{self.log_path}/last-checkpoint_cv{self.cv_num}.bin")
 
                 summary_loss = self._validation(valid_loader)
 
@@ -63,7 +63,7 @@ class Fitter:
                     self.best_summary_loss = summary_loss.avg
                     self.model.eval()
                     self.save(
-                        f"{self.log_path}/best-checkpoint-{str(self.epoch).zfill(3)}epoch.bin"
+                        f"{self.log_path}/best-checkpoint_cv{self.cv_num}_{str(self.epoch).zfill(3)}epoch.bin"
                     )
                     for path in sorted(
                         glob.glob(f"{self.log_path}/best-checkpoint-*epoch.bin")
@@ -117,7 +117,9 @@ class Fitter:
                 self.scheduler.step()
 
             mlflow.log_metric(
-                f"cv_{self.cv_num}_train_loss_{self.epoch}", summary_loss.avg, step=step
+                f"cv_{self.cv_num}_valid_loss",
+                summary_loss.avg,
+                step=self.epoch * len(train_loader) + step,
             )
 
         return summary_loss
@@ -160,7 +162,9 @@ class Fitter:
                 summary_loss.update(loss.detach().item(), batch_size)
 
             mlflow.log_metric(
-                f"cv_{self.cv_num}_valid_loss_{self.epoch}", summary_loss.avg, step=step
+                f"cv_{self.cv_num}_valid_loss",
+                summary_loss.avg,
+                step=self.epoch * len(valid_loader) + step,
             )
 
         return summary_loss
@@ -177,12 +181,6 @@ class Fitter:
             },
             path,
         )
-
-    def log(self, message: str):
-        if self.config.verbose:
-            print(message)
-        with open(f"{self.log_path}/log.txt", "a+") as logger:
-            logger.write(f"{message}\n")
 
 
 def get_fitter(
