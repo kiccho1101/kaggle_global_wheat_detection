@@ -15,6 +15,9 @@ from src.factories import (
 )
 import torch
 import torch.utils
+import mlflow
+
+from typing import List
 
 
 config = Config()
@@ -30,45 +33,51 @@ with timer("load raw data"):
 
 
 expriment_id, run_name = start_mlflow(config)
-for cv_num in range(3):
-    with timer(f"CV No. {cv_num}"):
+losses: List[float] = []
+with timer("CV", mlflow_on=True):
+    for cv_num in range(3):
+        with timer(f"CV No. {cv_num}"):
 
-        with timer("prepare dataloader and fitter"):
-            train_image_ids, train_df, val_image_ids, val_df = data.get_fold(cv_num)
+            with timer("prepare dataloader and fitter"):
+                train_image_ids, train_df, val_image_ids, val_df = data.get_fold(cv_num)
 
-            train_dataset: WheatDataset = get_wheat_dataset(
-                INPUT_DIR,
-                train_image_ids,
-                train_df,
-                "train",
-                transforms.get_train_transforms(),
-            )
-            valid_dataset: WheatDataset = get_wheat_dataset(
-                INPUT_DIR,
-                val_image_ids,
-                val_df,
-                "train",
-                transforms.get_valid_transforms(),
-            )
+                train_dataset: WheatDataset = get_wheat_dataset(
+                    INPUT_DIR,
+                    train_image_ids,
+                    train_df,
+                    "train",
+                    transforms.get_train_transforms(),
+                )
+                valid_dataset: WheatDataset = get_wheat_dataset(
+                    INPUT_DIR,
+                    val_image_ids,
+                    val_df,
+                    "train",
+                    transforms.get_valid_transforms(),
+                )
 
-            train_loader = get_wheat_dataloader(train_dataset, config, "train")
-            valid_loader = get_wheat_dataloader(valid_dataset, config, "valid")
+                train_loader = get_wheat_dataloader(train_dataset, config, "train")
+                valid_loader = get_wheat_dataloader(valid_dataset, config, "valid")
 
-            device = torch.device("cuda")
+                device = torch.device("cuda")
 
-            model = get_effdet(effdet_path)
-            model.cuda()
-            model.to(device)
+                model = get_effdet(effdet_path)
+                model.cuda()
+                model.to(device)
 
-            fitter: Fitter = get_fitter(
-                WORK_DIR=WORK_DIR,
-                INPUT_DIR=INPUT_DIR,
-                cv_num=cv_num,
-                model=model,
-                device=device,
-                loss_fn=get_average_meter(),
-                config=config,
-            )
+                fitter: Fitter = get_fitter(
+                    WORK_DIR=WORK_DIR,
+                    INPUT_DIR=INPUT_DIR,
+                    cv_num=cv_num,
+                    model=model,
+                    device=device,
+                    loss_fn=get_average_meter(),
+                    config=config,
+                )
 
-        with timer("fit"):
-            fitter.fit(train_loader, valid_loader)
+            with timer("fit"):
+                fitter.fit(train_loader, valid_loader)
+                losses.append(fitter.best_summary_loss)
+
+    mlflow.log_metric("cv_loss_avg", np.mean(losses))
+    mlflow.end_run()
