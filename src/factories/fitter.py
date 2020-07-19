@@ -117,7 +117,7 @@ class Fitter:
                 self.scheduler.step()
 
             mlflow.log_metric(
-                f"cv_{self.cv_num}_valid_loss",
+                f"cv_{self.cv_num}_train_loss",
                 summary_loss.avg,
                 step=self.epoch * len(train_loader) + step,
             )
