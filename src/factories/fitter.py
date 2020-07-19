@@ -62,7 +62,7 @@ class Fitter:
                     self.best_summary_loss = summary_loss.avg
                     self.model.eval()
                     self.save(
-                        f"{self.log_path}/best-checkpoint_cv{self.cv_num}_{str(self.epoch).zfill(3)}epoch.bin"
+                        f"{self.log_path}/best-checkpoint_cv{self.cv_num}_epoch{str(self.epoch).zfill(3)}.bin"
                     )
                     for path in sorted(
                         glob.glob(f"{self.log_path}/best-checkpoint-*epoch.bin")
@@ -104,15 +104,20 @@ class Fitter:
 
             self.optimizer.zero_grad()
 
-            outputs = self.model(images, target_res)
-            loss = outputs["loss"]
+            if self.config.model == "effdet":
+                outputs = self.model(images, target_res)
+                loss = outputs["loss"]
+            elif self.config.model == "timm_effdet":
+                loss, _, _ = self.model(images, bboxes, labels)
+            else:
+                loss, _, _ = self.model(images, bboxes, labels)
 
             loss.backward()
             summary_loss.update(loss.detach().item(), self.config.batch_size)
             self.optimizer.step()
 
-            # if self.config.step_scheduler:
-            #     self.scheduler.step()
+            if self.config.step_scheduler:
+                self.scheduler.step(metrics=summary_loss.avg)
 
             mlflow.log_metric(
                 f"cv_{self.cv_num}_train_loss",
@@ -124,8 +129,10 @@ class Fitter:
 
     def _validation(self, valid_loader: DataLoader):
         # TODO: Find a way to execute this with eval mode
-        # self.model.eval()
-        self.model.train()
+        if self.config.model == "effdet":
+            self.model.train()
+        else:
+            self.model.eval()
         summary_loss = self.loss_fn
         start = time.time()
         for step, (images, targets, _) in tqdm(
@@ -154,8 +161,13 @@ class Fitter:
                     "cls": labels,
                 }
 
-                outputs = self.model(images, target_res)
-                loss = outputs["loss"]
+                if self.config.model == "effdet":
+                    outputs = self.model(images, target_res)
+                    loss = outputs["loss"]
+                elif self.config.model == "timm_effdet":
+                    loss, _, _ = self.model(images, bboxes, labels)
+                else:
+                    loss, _, _ = self.model(images, bboxes, labels)
 
                 summary_loss.update(loss.detach().item(), batch_size)
 

@@ -6,10 +6,11 @@ class Config:
     num_workers = 0
     batch_size = 1
     n_folds = 2
-    n_epochs = 3
+    n_epochs = 4
     lr = 0.0002
     exp_name: str = "cv"
 
+    model: str = "timm_effdet"
     folder = "effdet5-cutmix-augmix"
 
     verbose = True
@@ -45,7 +46,6 @@ class Config:
         mlflow.log_param("validation_scheduler", self.validation_scheduler)
         mlflow.log_param("scheduler_class", self.scheduler_class.__name__)
         mlflow.log_param("verbose_step", self.verbose_step)
-        mlflow.log_params({
-            f"scheduler_params_{k}": v
-            for k, v in self.scheduler_params.items()
-        })
+        mlflow.log_params(
+            {f"scheduler_params_{k}": v for k, v in self.scheduler_params.items()}
+        )

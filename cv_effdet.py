@@ -61,9 +61,14 @@ with timer("CV", mlflow_on=True):
 
                 device = torch.device("cuda")
 
-                model = get_effdet(effdet_path)
-                model.cuda()
-                model.to(device)
+                if config.model == "effdet" or config.model == "timm_effdet":
+                    model = get_effdet(effdet_path)
+                    model.cuda()
+                    model.to(device)
+                else:
+                    model = get_effdet(effdet_path)
+                    model.cuda()
+                    model.to(device)
 
                 fitter: Fitter = get_fitter(
                     WORK_DIR=WORK_DIR,
