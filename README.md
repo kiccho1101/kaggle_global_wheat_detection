@@ -29,3 +29,12 @@ pip install -r requirements.txt  -f https://download.pytorch.org/whl/torch_stabl
 
 - チケット管理は[ZenHub](https://chrome.google.com/webstore/detail/zenhub-for-github/ogcgkffhplmphkaahpmffcafajaocjbd)でやりたい
 - chromeのextension入れるとすごい便利。
+
+
+## Instance
+
+- ちなみに今GCPでインスタンス借りてそこで回してます
+- GPUはTeslaのT4 (速いのか遅いのかわからん)
+
+- mlflow
+http://34.84.232.106:5000/
