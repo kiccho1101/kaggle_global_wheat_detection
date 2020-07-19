@@ -11,9 +11,8 @@ def collate_fn(batch):
 def get_wheat_dataloader(
     dataset: torch.utils.data.Dataset, config: Config, mode: str
 ) -> torch.utils.data.DataLoader:
-    dataloader: torch.utils.data.DataLoader = torch.utils.data.DataLoader()
     if mode == "train":
-        dataloader = torch.utils.data.DataLoader(
+        return torch.utils.data.DataLoader(
             dataset,
             batch_size=config.batch_size,
             sampler=RandomSampler(dataset),
@@ -22,7 +21,7 @@ def get_wheat_dataloader(
             collate_fn=collate_fn,
         )
     if mode == "valid":
-        dataloader = torch.utils.data.DataLoader(
+        return torch.utils.data.DataLoader(
             dataset,
             batch_size=config.batch_size,
             num_workers=config.num_workers,
@@ -31,4 +30,3 @@ def get_wheat_dataloader(
             pin_memory=False,
             collate_fn=collate_fn,
         )
-    return dataloader
