@@ -9,6 +9,7 @@ from tqdm.autonotebook import tqdm
 import numpy as np
 
 from src.config import Config
+from src.utils import timer
 
 from nptyping import NDArray
 from typing import Dict, Any, Callable, List
@@ -47,6 +48,21 @@ class Fitter:
         )
         self.log(f"Fitter prepared. Device is {self.device}")
 
+    def start_mlflow(self):
+        try:
+            mlflow.end_run()
+        except Exception:
+            pass
+        if mlflow.get_experiment_by_name(self.config.exp_name) is None:
+            mlflow.create_experiment(self.config.exp_name)
+        self.experiment_id: str = mlflow.get_experiment_by_name(
+            self.config.exp_name
+        ).experiment_id
+        print("put the run name")
+        self.run_name: str = input()
+        mlflow.start_run(experiment_id=self.config.exp_name, run_name=self.run_name)
+        self.config.log_mlflow_params()
+
     def fit(self, train_loader: DataLoader, valid_loader: DataLoader) -> None:
         for _ in range(self.config.n_epochs):
             if self.config.verbose:
@@ -54,35 +70,37 @@ class Fitter:
                 timestamp = datetime.datetime.now().isoformat()
                 self.log(f"\n{timestamp}\nLR: {lr}")
 
-            start = time.time()
-            summary_loss = self._train_one_epoch(train_loader)
+            with timer(f"epoch {self.epoch}", mlflow_on=True):
+                start = time.time()
+                summary_loss = self._train_one_epoch(train_loader)
 
-            self.log(
-                f"[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, time: {(time.time() - start):.5f}"
-            )
-            self.save(f"{self.log_path}/last-checkpoint.bin")
-
-            start = time.time()
-            summary_loss = self._validation(valid_loader)
-            self.log(
-                f"[RESULT]: Val. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, time: {(time.time() - start):.5f}"
-            )
-
-            if summary_loss.avg < self.best_summary_loss:
-                self.best_summary_loss = summary_loss.avg
-                self.model.eval()
-                self.save(
-                    f"{self.log_path}/best-checkpoint-{str(self.epoch).zfill(3)}epoch.bin"
+                self.log(
+                    f"[RESULT]: Train. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, time: {(time.time() - start):.5f}"
                 )
-                for path in sorted(
-                    glob.glob(f"{self.log_path}/best-checkpoint-*epoch.bin")
-                )[:-3]:
-                    os.remove(path)
+                self.save(f"{self.log_path}/last-checkpoint.bin")
 
-            if self.config.validation_scheduler:
-                self.scheduler.step(metrics=summary_loss.avg)
+                start = time.time()
+                summary_loss = self._validation(valid_loader)
+                self.log(
+                    f"[RESULT]: Val. Epoch: {self.epoch}, summary_loss: {summary_loss.avg:.5f}, time: {(time.time() - start):.5f}"
+                )
 
-            self.epoch += 1
+                if summary_loss.avg < self.best_summary_loss:
+                    self.best_summary_loss = summary_loss.avg
+                    self.model.eval()
+                    self.save(
+                        f"{self.log_path}/best-checkpoint-{str(self.epoch).zfill(3)}epoch.bin"
+                    )
+                    for path in sorted(
+                        glob.glob(f"{self.log_path}/best-checkpoint-*epoch.bin")
+                    )[:-3]:
+                        os.remove(path)
+
+                if self.config.validation_scheduler:
+                    self.scheduler.step(metrics=summary_loss.avg)
+
+                self.epoch += 1
+        mlflow.end_run()
 
     def _train_one_epoch(self, train_loader: DataLoader):
         self.model.train()
@@ -124,6 +142,8 @@ class Fitter:
             if self.config.step_scheduler:
                 self.scheduler.step()
 
+            mlflow.log_metric(f"train_loss {self.epoch}", summary_loss.avg, step=step)
+
         return summary_loss
 
     def _validation(self, valid_loader: DataLoader):
@@ -161,6 +181,8 @@ class Fitter:
                 loss = outputs["loss"]
 
                 summary_loss.update(loss.detach().item(), batch_size)
+
+            mlflow.log_metric(f"valid_loss {self.epoch}", summary_loss.avg, step=step)
 
         return summary_loss
 

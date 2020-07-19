@@ -1,11 +1,13 @@
 import torch
+import mlflow
 
 
 class Config:
     num_workers = 0
     batch_size = 1
-    n_epochs = 1
+    n_epochs = 3
     lr = 0.0002
+    exp_name: str = "cv"
 
     folder = "effdet5-cutmix-augmix"
 
@@ -28,3 +30,17 @@ class Config:
         min_lr=1e-8,
         eps=1e-08,
     )
+
+    def log_mlflow_params(self):
+        mlflow.log_param("num_workers", self.num_workers)
+        mlflow.log_param("batch_size", self.batch_size)
+        mlflow.log_param("n_epochs", self.n_epochs)
+        mlflow.log_param("lr", self.lr)
+        mlflow.log_param("folder", self.folder)
+        mlflow.log_param("verbose", self.verbose)
+        mlflow.log_param("verbose_step", self.verbose_step)
+        mlflow.log_param("step_scheduler", self.step_scheduler)
+        mlflow.log_param("validation_scheduler", self.validation_scheduler)
+        mlflow.log_param("scheduler_class", self.scheduler_class.__name__)
+        mlflow.log_param("verbose_step", self.verbose_step)
+        mlflow.log_params(self.scheduler_params)
