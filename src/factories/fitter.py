@@ -87,7 +87,7 @@ class Fitter:
         ):
             if self.config.verbose:
                 print(
-                    f"Train Step {step}/{len(train_loader)}, "
+                    f"CV {self.cv_num} EPOCH {self.epoch} Train Step {step}/{len(train_loader)}, "
                     + f"summary_loss: {summary_loss.avg:.5f}, "
                     + f"time: {(time.time() - start):.5f}",
                 )
@@ -113,8 +113,8 @@ class Fitter:
             summary_loss.update(loss.detach().item(), self.config.batch_size)
             self.optimizer.step()
 
-            if self.config.step_scheduler:
-                self.scheduler.step()
+            # if self.config.step_scheduler:
+            #     self.scheduler.step()
 
             mlflow.log_metric(
                 f"cv_{self.cv_num}_train_loss",
@@ -136,7 +136,7 @@ class Fitter:
             if self.config.verbose:
                 if step % self.config.verbose_step == 0:
                     print(
-                        f"Val Step {step}/{len(valid_loader)}, "
+                        f"CV {self.cv_num} EPOCH {self.epoch} Val Step {step}/{len(valid_loader)}, "
                         + f"summary_loss: {summary_loss.avg:.5f}, "
                         + f"time: {(time.time() - start):.5f}",
                     )
@@ -173,7 +173,7 @@ class Fitter:
         self.model.eval()
         torch.save(
             {
-                "model_state_dict": self.model.model.state_dict(),
+                "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "scheduler_state_dict": self.scheduler.state_dict(),
                 "best_summary_loss": self.best_summary_loss,

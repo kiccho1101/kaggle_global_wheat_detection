@@ -1,7 +1,7 @@
 # %%
 import numpy as np
 import pandas as pd
-from src import Config
+from src.config import Config
 from src.utils import timer, start_mlflow
 from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
@@ -57,6 +57,7 @@ for cv_num in range(3):
             device = torch.device("cuda")
 
             model = get_effdet(effdet_path)
+            model.cuda()
             model.to(device)
 
             fitter: Fitter = get_fitter(
