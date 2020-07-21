@@ -107,7 +107,7 @@ def make_tta_predictions(
     images: Imgs,
     tta_transforms: List[TTACompose],
     score_threshold: float = 0.25,
-    device: str = "cuda",
+    device: torch.device = torch.device("cuda"),
 ) -> List[List[Dict[str, np.ndarray]]]:
     images = torch.stack(images).float().to(device)
     predictions: List[List[Dict[str, np.ndarray]]] = []

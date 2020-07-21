@@ -28,7 +28,7 @@ with timer("load raw data"):
 
 
 expriment_id, run_name = start_mlflow(config)
-losses: List[float] = []
+precisions: List[float] = []
 with timer("CV", mlflow_on=True):
     for cv_num in range(2):
         with timer(f"CV No. {cv_num}"):
@@ -60,7 +60,10 @@ with timer("CV", mlflow_on=True):
 
             with timer("fit"):
                 fitter.fit(train_loader, valid_loader)
-                losses.append(fitter.best_summary_loss)
 
-    mlflow.log_metric("cv_loss_avg", np.mean(losses))
+            with timer("evaluate"):
+                precision = fitter.predict_and_evaluate(valid_loader)
+                precisions.append(precision)
+
+    mlflow.log_metric("precision_avg", np.mean(precisions))
 mlflow.end_run()

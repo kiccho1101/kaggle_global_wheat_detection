@@ -7,15 +7,18 @@ import os
 import glob
 from tqdm.autonotebook import tqdm
 import numpy as np
+import numba
 
 from src.config import Config
 from src.utils import timer
 from src.types import Imgs, Boxes, Labels
-from src.factories.model import get_effdet_train
+from src.factories.model import get_effdet_train, get_effdet_eval
 from src.factories.loss_fn import get_average_meter
+from src.factories.tta import get_tta_transforms, make_tta_predictions
+from src.factories.wbf import run_wbf
+from src.factories.metric import calculate_image_precision
 
-from nptyping import NDArray
-from typing import Dict, Any, Callable, List
+from typing import Optional, List
 import mlflow
 import mlflow.pytorch
 
@@ -51,14 +54,20 @@ class Fitter:
             model.to(self.config.device)
         return model
 
-    def fit(self, train_loader: DataLoader, valid_loader: DataLoader) -> None:
+    def fit(
+        self,
+        train_loader: DataLoader,
+        valid_loader: DataLoader,
+        with_validation: bool = False,
+    ) -> None:
         for _ in range(self.config.n_epochs):
 
             with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
                 summary_loss = self._train_one_epoch(train_loader)
                 self.save(f"{self.log_path}/last-checkpoint_cv{self.cv_num}.bin")
 
-                summary_loss = self._validation(valid_loader)
+                if with_validation:
+                    summary_loss = self._validation(valid_loader)
 
                 if summary_loss.avg < self.best_summary_loss:
                     self.best_summary_loss = summary_loss.avg
@@ -69,6 +78,51 @@ class Fitter:
                     self.scheduler.step(metrics=summary_loss.avg)
 
                 self.epoch += 1
+
+    def predict_and_evaluate(
+        self, valid_loader: DataLoader, checkpoint_path: Optional[str] = None
+    ) -> float:
+        if checkpoint_path is None:
+            checkpoint_path = f"{self.log_path}/best-checkpoint_cv{self.cv_num}.bin"
+
+        precisions: List[float] = []
+        tta_transforms = get_tta_transforms()
+        model = get_effdet_eval(checkpoint_path).to(self.config.device)
+        for step, (images, targets, _) in tqdm(
+            enumerate(valid_loader), total=len(valid_loader)
+        ):
+            predictions = make_tta_predictions(
+                model, images, tta_transforms, 0.25, self.config.device
+            )
+            image_precisions: List[float] = []
+            for image_index, image in enumerate(images):
+                gts: Boxes = targets[image_index]["bboxes"].cpu().numpy()
+                preds, scores, labels = run_wbf(
+                    predictions,
+                    image_index,
+                    image_size=512,
+                    iou_thr=0.44,
+                    skip_box_thr=0.43,
+                    weights=None,
+                )
+                preds_sorted_idx = np.argsort(scores)[::-1]
+                preds_sorted: Boxes = preds[preds_sorted_idx]
+                iou_thresholds = numba.typed.List()
+                for x in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75]:
+                    iou_thresholds.append(x)
+                image_precision = calculate_image_precision(
+                    gts, preds_sorted, thresholds=iou_thresholds, form="pascal_voc"
+                )
+                image_precisions.append(image_precision)
+            precision = np.mean(image_precisions)
+            precisions.append(precision)
+            print(
+                f"CV {self.cv_num} Eval Step {step}/{len(valid_loader)}, "
+                + f"precision: {precision}, "
+            )
+        avg_precision = np.mean(precisions)
+        mlflow.log_metric(f"precision_cv_{self.cv_num}", avg_precision)
+        return avg_precision
 
     def _train_one_epoch(self, train_loader: DataLoader):
         self.train_model.train()
