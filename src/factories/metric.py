@@ -39,20 +39,20 @@ def calculate_iou(gt: Box, pr: Box, form: str = "pascal_voc") -> float:
 def find_best_match(
     gts: Boxes,
     pred: Box,
-    pred_idx: int,
+    pred_idx: numba.int32,
     threshold: float = 0.5,
     form: str = "pascal_voc",
     ious: Optional[np.ndarray] = None,
-) -> int:
-    best_match_iou: float = -np.inf
-    best_match_idx: int = -1
+) -> numba.int32:
+    best_match_iou: numba.float64 = -np.inf
+    best_match_idx: numba.int32 = -1
 
     for gt_idx in range(len(gts)):
         if gts[gt_idx][0] < 0:
             # Already matched GT-box
             continue
 
-        iou: float = -1 if ious is None else ious[gt_idx][pred_idx]
+        iou: numba.float64 = -1 if ious is None else ious[gt_idx][pred_idx]
         if iou < 0:
             iou = calculate_iou(gts[gt_idx], pred, form=form)
             if ious is not None:
@@ -72,12 +72,12 @@ def find_best_match(
 def calculate_precision(
     gts: Boxes,
     preds: Boxes,
-    threshold: float = 0.5,
+    threshold: numba.float64 = 0.5,
     form="pascal_voc",
     ious: Optional[np.ndarray] = None,
 ) -> float:
-    tp: int = 0
-    fp: int = 0
+    tp: numba.int32 = 0
+    fp: numba.int32 = 0
 
     for pred_idx in range(len(preds)):
         best_match_gt_idx = find_best_match(
@@ -96,16 +96,16 @@ def calculate_precision(
 def calculate_image_precision(
     gts: Boxes,
     preds: Boxes,
-    thresholds: List[float] = [0.5, 0.76, 0.05],
+    thresholds: List[numba.float64] = [0.5, 0.76, 0.05],
     form: str = "pascal_voc",
 ) -> float:
-    n_threshold: int = len(thresholds)
-    image_precision: float = 0.0
+    n_thresholds: int = int(len(thresholds))
+    image_precision: float = float(0.0)
     ious = np.ones((len(gts), len(preds))) * -1
 
     for threshold in thresholds:
         precision_at_threshold = calculate_precision(
             gts.copy(), preds, threshold=threshold, form=form, ious=ious
         )
-        image_precision += precision_at_threshold / n_threshold
+        image_precision += precision_at_threshold / n_thresholds
     return image_precision

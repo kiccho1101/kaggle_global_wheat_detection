@@ -7,3 +7,4 @@ from .fitter import get_fitter, Fitter
 from .model import get_effdet_train, get_effdet_eval
 from .tta import get_tta_transforms, make_tta_predictions
 from .wbf import run_wbf
+from .metric import calculate_image_precision
