@@ -3,10 +3,11 @@ import mlflow
 
 
 class Config:
+    device = torch.device("cuda")
     num_workers = 0
     batch_size = 1
-    n_folds = 2
-    n_epochs = 4
+    n_folds = 3
+    n_epochs = 5
     lr = 0.0002
     exp_name: str = "cv"
 
@@ -33,9 +34,16 @@ class Config:
         eps=1e-08,
     )
 
+    def __init__(self, WORK_DIR: str = "."):
+        self.WORK_DIR = WORK_DIR
+        self.INPUT_DIR = f"{WORK_DIR}/input/global-wheat-detection"
+        self.effdet_path = f"{WORK_DIR}/input/efficientdet/efficientdet_d5-ef44aea8.pth"
+
     def log_mlflow_params(self):
         mlflow.log_param("num_workers", self.num_workers)
         mlflow.log_param("batch_size", self.batch_size)
+        mlflow.log_param("model_name", self.model)
+        mlflow.log_param("effdet_path", self.effdet_path)
         mlflow.log_param("n_folds", self.n_folds)
         mlflow.log_param("n_epochs", self.n_epochs)
         mlflow.log_param("lr", self.lr)

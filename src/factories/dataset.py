@@ -8,6 +8,7 @@ from sklearn.model_selection import StratifiedKFold
 
 import torch
 from torch.utils.data import Dataset
+from src.types import Boxes
 
 import albumentations as A
 
@@ -40,9 +41,7 @@ class WheatDataset(Dataset):
         records: pd.DataFrame = self.df[self.df["image_id"] == image_id]
 
         image: NDArray[(1024, 1024, 3), np.int] = self._read_image(image_id)
-        bboxes: NDArray[(Any, 4), np.float] = records[
-            ["x_min", "y_min", "x_max", "y_max"]
-        ].values
+        bboxes: Boxes = records[["x_min", "y_min", "x_max", "y_max"]].values
 
         area: torch.Tensor = self._get_area(bboxes)
         labels: torch.Tensor = torch.ones((records.shape[0],), dtype=torch.int64)
