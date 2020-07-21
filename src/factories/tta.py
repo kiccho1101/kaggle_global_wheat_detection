@@ -1,15 +1,10 @@
 import numpy as np
 import torch
 import albumentations as A
+from itertools import product
 
-from nptyping import NDArray
-from typing import Any, List
-
-from torch import result_type
-
-Img = NDArray[(3, 512, 512), int]
-Imgs = NDArray[(Any, 3, 512, 512), int]
-Boxes = NDArray[(Any, 4), float]
+from src.types import Img, Imgs, Boxes
+from typing import Any, List, Dict
 
 
 class BaseWheatTTA:
@@ -51,6 +46,20 @@ class TTAVerticalFlip(BaseWheatTTA):
         return res_boxes
 
 
+class TTARotate90(BaseWheatTTA):
+    def augment(self, image: Img) -> Img:
+        return torch.rot90(image, 1, (1, 2))
+
+    def batch_augment(self, images: Imgs) -> Imgs:
+        return torch.rot90(images, 1, (2, 3))
+
+    def deaugment_boxes(self, boxes: Boxes) -> Boxes:
+        res_boxes = boxes.copy()
+        res_boxes[:, [0, 2]] = self.image_size - boxes[:, [1, 3]]
+        res_boxes[:, [1, 3]] = boxes[:, [2, 0]]
+        return res_boxes
+
+
 class TTACompose(BaseWheatTTA):
     def __init__(self, transforms: List[BaseWheatTTA]):
         self.transforms = transforms
@@ -77,3 +86,49 @@ class TTACompose(BaseWheatTTA):
         for transform in self.transforms[::-1]:
             boxes = transform.deaugment_boxes(boxes)
         return self.prepare_boxes(boxes)
+
+
+def get_tta_transforms() -> List[TTACompose]:
+    tta_transforms: List[TTACompose] = [
+        TTACompose(
+            [tta_transform for tta_transform in tta_combination if tta_transform]
+        )
+        for tta_combination in product(
+            [TTAHorizontalFlip(), None],
+            [TTAVerticalFlip(), None],
+            [TTARotate90(), None],
+        )
+    ]
+    return tta_transforms
+
+
+def make_tta_predictions(
+    model: torch.nn.Module,
+    images: Imgs,
+    tta_transforms: List[TTACompose],
+    score_threshold: float = 0.25,
+    device: str = "cuda",
+) -> List[List[Dict[str, np.ndarray]]]:
+    images = torch.stack(images).float().to(device)
+    predictions: List[List[Dict[str, np.ndarray]]] = []
+
+    for tta_transform in tta_transforms:
+        tta_transform = tta_transforms[0]
+        det = model(
+            tta_transform.batch_augment(images.clone()),
+            torch.tensor([1] * images.shape[0]).float().to(device),
+        )
+        result: List[Dict[str, np.ndarray]] = []
+        i = 0
+        for i in range(images.shape[0]):
+            bboxes = det[i].detach().cpu().numpy()[:, :4]
+            scores = det[i].detach().cpu().numpy()[:, 4]
+            indexes = np.where(scores > score_threshold)[0]
+            bboxes = bboxes[indexes]
+            bboxes[:, 2] = bboxes[:, 2] + bboxes[:, 0]
+            bboxes[:, 3] = bboxes[:, 3] + bboxes[:, 1]
+            bboxes = tta_transform.deaugment_boxes(bboxes.copy())
+            result.append({"bboxes": bboxes, "scores": scores[indexes]})
+        predictions.append(result)
+
+    return predictions
