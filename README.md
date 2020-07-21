@@ -2,26 +2,29 @@
 
 ## Setup
 
-1. input.zipを[こちら](https://www.dropbox.com/sh/f2eff629m7uwze1/AAAf-jEpF8OBaTUHLM3yXC67a?dl=0)からダウンロードして解凍し、中身をinputフォルダに置く
+1. Download data from Kaggle
 
-2. python環境構築方法
+```bash
+pip install kaggle
+export KAGGLE_USER={user name}
+export KAGGLE_KEY={key}
+sh download.sh
+```
 
-### pipenvを使う場合はコマンド一発でできる
+2. Set up python
 
 ```bash
 pipenv install --skip-lock
+```
 
-## Run cross validation
+3. Run cross validation
 
 ```bash
 python cv_effdet.py
 ```
+### Set up for CUDA10.1
 
-その他のパッケージ管理ライブラリを使っている場合は、Pipfile内からパッケージ名が見られるので、必要に応じてインストールしてね
-
-### CUDA10.1用の環境構築
-
-```
+```bash
 pip install -r requirements.txt  -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
