@@ -10,6 +10,9 @@ import numpy as np
 
 from src.config import Config
 from src.utils import timer
+from src.types import Imgs, Boxes, Labels
+from src.factories.model import get_effdet_train
+from src.factories.loss_fn import get_average_meter
 
 from nptyping import NDArray
 from typing import Dict, Any, Callable, List
@@ -19,65 +22,56 @@ import mlflow.pytorch
 
 class Fitter:
     def __init__(
-        self,
-        WORK_DIR: str,
-        INPUT_DIR: str,
-        cv_num: int,
-        model: torch.nn.Module,
-        device: torch.device,
-        loss_fn: Any,
-        config: Config,
+        self, cv_num: int, config: Config,
     ):
+        self.config: Config = config
         self.epoch: int = 0
-        self.WORK_DIR: str = WORK_DIR
-        self.INPUT_DIR: str = INPUT_DIR
         self.cv_num: int = cv_num
         self.start_time: str = datetime.datetime.now().isoformat()
-        self.log_path: str = f"{self.WORK_DIR}/output/{self.start_time}"
+        self.log_path: str = f"{self.config.WORK_DIR}/output/{self.start_time}"
         Path(self.log_path).mkdir(parents=True, exist_ok=True)
 
         self.best_summary_loss: float = 10 ** 5
 
-        self.config: Config = config
-        self.model: torch.nn.Module = model
-        self.loss_fn = loss_fn
-        self.device: torch.device = device
+        self.train_model = self.load_train_model()
+        self.loss_fn = get_average_meter()
         self.optimizer: torch.optim.Optimizer = torch.optim.AdamW(
-            self.model.parameters(), lr=config.lr
+            self.train_model.parameters(), lr=config.lr
         )
         self.scheduler = config.scheduler_class(
             self.optimizer, **config.scheduler_params
         )
+
+    def load_train_model(self):
+        if self.config.model == "effdet" or self.config.model == "timm_effdet":
+            model = get_effdet_train(self.config.effdet_path)
+            model.to(self.config.device)
+        else:
+            model = get_effdet_train(self.config.effdet_path)
+            model.to(self.config.device)
+        return model
 
     def fit(self, train_loader: DataLoader, valid_loader: DataLoader) -> None:
         for _ in range(self.config.n_epochs):
 
             with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
                 summary_loss = self._train_one_epoch(train_loader)
-
                 self.save(f"{self.log_path}/last-checkpoint_cv{self.cv_num}.bin")
 
                 summary_loss = self._validation(valid_loader)
 
                 if summary_loss.avg < self.best_summary_loss:
                     self.best_summary_loss = summary_loss.avg
-                    self.model.eval()
-                    self.save(
-                        f"{self.log_path}/best-checkpoint_cv{self.cv_num}_{str(self.epoch).zfill(3)}epoch.bin"
-                    )
-                    for path in sorted(
-                        glob.glob(f"{self.log_path}/best-checkpoint-*epoch.bin")
-                    )[:-3]:
-                        os.remove(path)
+                    self.train_model.eval()
+                    self.save(f"{self.log_path}/best-checkpoint_cv{self.cv_num}.bin")
 
                 if self.config.validation_scheduler:
                     self.scheduler.step(metrics=summary_loss.avg)
 
                 self.epoch += 1
-        mlflow.end_run()
 
     def _train_one_epoch(self, train_loader: DataLoader):
-        self.model.train()
+        self.train_model.train()
         summary_loss = self.loss_fn
 
         start = time.time()
@@ -92,32 +86,35 @@ class Fitter:
                     + f"time: {(time.time() - start):.5f}",
                 )
             images = torch.stack(images)
-            images: NDArray[(self.config.batch_size, 3, 512, 512), np.int] = images.to(
-                self.device
-            ).float()
-            bboxes: List[NDArray[(Any, 4), np.int]] = [
-                target["bboxes"].to(self.device).float() for target in targets
+            images: Imgs = images.to(self.config.device).float()
+            bboxes: Boxes = [
+                target["bboxes"].to(self.config.device).float() for target in targets
             ]
-            labels: List[NDArray[(Any), np.int]] = [
-                target["labels"].to(self.device).float() for target in targets
+            labels: Labels = [
+                target["labels"].to(self.config.device).float() for target in targets
             ]
 
             target_res = {"bbox": bboxes, "cls": labels}
 
             self.optimizer.zero_grad()
 
-            outputs = self.model(images, target_res)
-            loss = outputs["loss"]
+            if self.config.model == "effdet":
+                outputs = self.train_model(images, target_res)
+                loss = outputs["loss"]
+            elif self.config.model == "timm_effdet":
+                loss, _, _ = self.train_model(images, bboxes, labels)
+            else:
+                loss, _, _ = self.train_model(images, bboxes, labels)
 
             loss.backward()
             summary_loss.update(loss.detach().item(), self.config.batch_size)
             self.optimizer.step()
 
-            # if self.config.step_scheduler:
-            #     self.scheduler.step()
+            if self.config.step_scheduler:
+                self.scheduler.step(metrics=summary_loss.avg)
 
             mlflow.log_metric(
-                f"cv_{self.cv_num}_train_loss",
+                f"train_loss_cv_{self.cv_num}",
                 summary_loss.avg,
                 step=self.epoch * len(train_loader) + step,
             )
@@ -126,8 +123,10 @@ class Fitter:
 
     def _validation(self, valid_loader: DataLoader):
         # TODO: Find a way to execute this with eval mode
-        # self.model.eval()
-        self.model.train()
+        if self.config.model == "effdet":
+            self.train_model.train()
+        else:
+            self.train_model.eval()
         summary_loss = self.loss_fn
         start = time.time()
         for step, (images, targets, _) in tqdm(
@@ -143,12 +142,14 @@ class Fitter:
             with torch.no_grad():
                 images = torch.stack(images)
                 batch_size = images.shape[0]
-                images = images.to(self.device).float()
-                bboxes: List[NDArray[(Any, 4), np.int]] = [
-                    target["bboxes"].to(self.device).float() for target in targets
+                images: Imgs = images.to(self.config.device).float()
+                bboxes: Boxes = [
+                    target["bboxes"].to(self.config.device).float()
+                    for target in targets
                 ]
-                labels: List[NDArray[(Any), np.int]] = [
-                    target["labels"].to(self.device).float() for target in targets
+                labels: Labels = [
+                    target["labels"].to(self.config.device).float()
+                    for target in targets
                 ]
 
                 target_res = {
@@ -156,13 +157,18 @@ class Fitter:
                     "cls": labels,
                 }
 
-                outputs = self.model(images, target_res)
-                loss = outputs["loss"]
+                if self.config.model == "effdet":
+                    outputs = self.train_model(images, target_res)
+                    loss = outputs["loss"]
+                elif self.config.model == "timm_effdet":
+                    loss, _, _ = self.train_model(images, bboxes, labels)
+                else:
+                    loss, _, _ = self.train_model(images, bboxes, labels)
 
                 summary_loss.update(loss.detach().item(), batch_size)
 
             mlflow.log_metric(
-                f"cv_{self.cv_num}_valid_loss",
+                f"valid_loss_cv_{self.cv_num}",
                 summary_loss.avg,
                 step=self.epoch * len(valid_loader) + step,
             )
@@ -170,10 +176,10 @@ class Fitter:
         return summary_loss
 
     def save(self, path: str):
-        self.model.eval()
+        self.train_model.eval()
         torch.save(
             {
-                "model_state_dict": self.model.state_dict(),
+                "model_state_dict": self.train_model.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
                 "scheduler_state_dict": self.scheduler.state_dict(),
                 "best_summary_loss": self.best_summary_loss,
@@ -183,13 +189,5 @@ class Fitter:
         )
 
 
-def get_fitter(
-    WORK_DIR: str,
-    INPUT_DIR: str,
-    cv_num: int,
-    model: torch.nn.Module,
-    device: torch.device,
-    loss_fn: Any,
-    config: Config,
-) -> Fitter:
-    return Fitter(WORK_DIR, INPUT_DIR, cv_num, model, device, loss_fn, config)
+def get_fitter(cv_num: int, config: Config) -> Fitter:
+    return Fitter(cv_num, config)

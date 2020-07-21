@@ -12,3 +12,4 @@ pycocotools
 jupyter
 timm
 omegaconf
+ensemble-boxes
