@@ -3,14 +3,12 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 import time
-import os
-import glob
 from tqdm.autonotebook import tqdm
 import numpy as np
 import numba
 
 from src.config import Config
-from src.utils import timer
+from src.utils import timer, remove_empty_dirs
 from src.types import Imgs, Boxes, Labels
 from src.factories.model import get_effdet_train, get_effdet_eval
 from src.factories.loss_fn import get_average_meter
@@ -24,15 +22,15 @@ import mlflow.pytorch
 
 
 class Fitter:
-    def __init__(
-        self, cv_num: int, config: Config,
-    ):
+    def __init__(self, cv_num: int, config: Config, start_time: Optional[str]):
         self.config: Config = config
         self.epoch: int = 0
         self.cv_num: int = cv_num
-        self.start_time: str = datetime.datetime.now().isoformat()
+        self.start_time = start_time
         self.log_path: str = f"{self.config.WORK_DIR}/output/{self.start_time}"
-        Path(self.log_path).mkdir(parents=True, exist_ok=True)
+        if start_time is not None:
+            remove_empty_dirs(f"{self.config.WORK_DIR}/output")
+            Path(self.log_path).mkdir(parents=True, exist_ok=True)
 
         self.best_summary_loss: float = 10 ** 5
 
@@ -64,15 +62,17 @@ class Fitter:
 
             with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
                 summary_loss = self._train_one_epoch(train_loader)
-                self.save(f"{self.log_path}/last-checkpoint_cv{self.cv_num}.bin")
 
                 if with_validation:
                     summary_loss = self._validation(valid_loader)
 
                 if summary_loss.avg < self.best_summary_loss:
                     self.best_summary_loss = summary_loss.avg
-                    self.train_model.eval()
-                    self.save(f"{self.log_path}/best-checkpoint_cv{self.cv_num}.bin")
+                    if self.start_time is not None:
+                        self.train_model.eval()
+                        self.save(
+                            f"{self.log_path}/best-checkpoint_cv{self.cv_num}.bin"
+                        )
 
                 if self.config.validation_scheduler:
                     self.scheduler.step(metrics=summary_loss.avg)
@@ -243,5 +243,5 @@ class Fitter:
         )
 
 
-def get_fitter(cv_num: int, config: Config) -> Fitter:
-    return Fitter(cv_num, config)
+def get_fitter(cv_num: int, config: Config, start_time: Optional[str]) -> Fitter:
+    return Fitter(cv_num, config, start_time)
