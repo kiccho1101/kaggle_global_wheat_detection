@@ -4,6 +4,7 @@ import time
 from typing import List, Any
 from contextlib import contextmanager
 import os
+import glob
 import random
 import torch
 import mlflow
@@ -44,3 +45,14 @@ def start_mlflow(config: Config) -> Tuple[str, str]:
     mlflow.start_run(experiment_id=experiment_id, run_name=run_name)
     config.log_mlflow_params()
     return experiment_id, run_name
+
+
+def remove_empty_dirs(path: str, remain: int = 3):
+    for delete_path in sorted(
+        [
+            dir_path
+            for dir_path in glob.glob(f"{path}/*")
+            if len(glob.glob(f"{dir_path}/*")) == 0
+        ]
+    )[:-remain]:
+        os.rmdir(delete_path)

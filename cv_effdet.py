@@ -1,8 +1,9 @@
 # %%
+from random import seed
 import numpy as np
 import pandas as pd
 from src.config import Config
-from src.utils import timer, start_mlflow
+from src.utils import timer, start_mlflow, seed_everything
 from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
     get_data,
@@ -10,27 +11,29 @@ from src.factories import (
     get_wheat_dataloader,
     get_transforms,
     get_fitter,
-    get_average_meter,
 )
 import torch
 import torch.utils
 import mlflow
+import datetime
 
 from typing import List
 
-
 config = Config(".")
+seed_everything(config.seed)
 transforms: Transforms = get_transforms()
+start_time = datetime.datetime.now().isoformat()
+
+expriment_id, run_name = start_mlflow(config)
 
 
 with timer("load raw data"):
     data: WheatData = get_data(config.INPUT_DIR)
 
 
-expriment_id, run_name = start_mlflow(config)
 precisions: List[float] = []
 with timer("CV", mlflow_on=True):
-    for cv_num in range(2):
+    for cv_num in range(1):
         with timer(f"CV No. {cv_num}"):
 
             with timer("prepare dataloader and fitter"):
@@ -55,11 +58,11 @@ with timer("CV", mlflow_on=True):
                 valid_loader = get_wheat_dataloader(valid_dataset, config, "valid")
 
                 fitter: Fitter = get_fitter(
-                    cv_num=cv_num, config=config,
+                    cv_num=cv_num, config=config, start_time=start_time
                 )
 
             with timer("fit"):
-                fitter.fit(train_loader, valid_loader)
+                fitter.fit(train_loader, valid_loader, with_validation=False)
 
             with timer("evaluate"):
                 precision = fitter.predict_and_evaluate(valid_loader)
