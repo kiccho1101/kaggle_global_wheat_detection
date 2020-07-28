@@ -12,7 +12,8 @@ from src.utils import timer, remove_empty_dirs
 from src.types import Imgs, Boxes, Labels
 from src.factories.model import get_effdet_train, get_effdet_eval
 from src.factories.loss_fn import get_average_meter
-from src.factories.tta import get_tta_transforms, make_tta_predictions
+from src.factories.tta import get_tta_transforms
+from src.factories.make_predictions import make_predictions
 from src.factories.wbf import run_wbf
 from src.factories.metric import calculate_image_precision
 
@@ -91,13 +92,13 @@ class Fitter:
         for step, (images, targets, _) in tqdm(
             enumerate(valid_loader), total=len(valid_loader)
         ):
-            predictions = make_tta_predictions(
+            predictions = make_predictions(
                 model, images, tta_transforms, 0.25, self.config.device
             )
             image_precisions: List[float] = []
             for image_index, image in enumerate(images):
                 gts: Boxes = targets[image_index]["bboxes"].cpu().numpy()
-                preds, scores, labels = run_wbf(
+                preds, scores, _ = run_wbf(
                     predictions,
                     image_index,
                     image_size=512,
