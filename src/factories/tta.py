@@ -100,35 +100,3 @@ def get_tta_transforms() -> List[TTACompose]:
         )
     ]
     return tta_transforms
-
-
-def make_tta_predictions(
-    model: torch.nn.Module,
-    images: Imgs,
-    tta_transforms: List[TTACompose],
-    score_threshold: float = 0.25,
-    device: torch.device = torch.device("cuda"),
-) -> List[List[Dict[str, np.ndarray]]]:
-    images = torch.stack(images).float().to(device)
-    predictions: List[List[Dict[str, np.ndarray]]] = []
-
-    for tta_transform in tta_transforms:
-        tta_transform = tta_transforms[0]
-        det = model(
-            tta_transform.batch_augment(images.clone()),
-            torch.tensor([1] * images.shape[0]).float().to(device),
-        )
-        result: List[Dict[str, np.ndarray]] = []
-        i = 0
-        for i in range(images.shape[0]):
-            bboxes = det[i].detach().cpu().numpy()[:, :4]
-            scores = det[i].detach().cpu().numpy()[:, 4]
-            indexes = np.where(scores > score_threshold)[0]
-            bboxes = bboxes[indexes]
-            bboxes[:, 2] = bboxes[:, 2] + bboxes[:, 0]
-            bboxes[:, 3] = bboxes[:, 3] + bboxes[:, 1]
-            bboxes = tta_transform.deaugment_boxes(bboxes.copy())
-            result.append({"bboxes": bboxes, "scores": scores[indexes]})
-        predictions.append(result)
-
-    return predictions
