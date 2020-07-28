@@ -65,6 +65,9 @@ class WheatDataset(Dataset):
                     image = sample["image"]
                     target["bboxes"] = torch.tensor(sample["bboxes"])
                     target["labels"] = torch.stack(sample["labels"])
+                    target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][
+                        :, [1, 0, 3, 2]
+                    ]  # to xyxy -> yxyx
                     break
 
         return image, target, image_id
