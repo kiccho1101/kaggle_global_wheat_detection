@@ -25,6 +25,7 @@ transforms: Transforms = get_transforms()
 start_time = datetime.datetime.now().isoformat()
 
 expriment_id, run_name = start_mlflow(config)
+mlflow.log_param("start_time", start_time)
 
 
 with timer("load raw data"):
