@@ -17,6 +17,17 @@ def calculate_iou(gt: Box, pr: Box, form: str = "pascal_voc") -> float:
         pr[2] = pr[0] + pr[2]
         pr[3] = pr[1] + pr[3]
 
+    if form == "pascal_voc":
+        # to yxyx -> xyxy
+        tmp_0 = pr[0]
+        tmp_1 = pr[1]
+        tmp_2 = pr[2]
+        tmp_3 = pr[3]
+        pr[0] = tmp_1
+        pr[1] = tmp_0
+        pr[2] = tmp_3
+        pr[3] = tmp_2
+
     # Calculate overlap area
     dx: float = min(gt[2], pr[2]) - max(gt[0], pr[0]) + 1
     dy: float = min(gt[3], pr[3]) - max(gt[1], pr[1]) + 1

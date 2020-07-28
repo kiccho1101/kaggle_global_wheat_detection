@@ -20,6 +20,8 @@ def imshow_with_bboxes(
     for bbox in bboxes:
         img = cv2.rectangle(
             img.copy(),
+            # (int(bbox[1]), int(bbox[0])),
+            # (int(bbox[3]), int(bbox[2])),
             (int(bbox[0]), int(bbox[1])),
             (int(bbox[2]), int(bbox[3])),
             (1, 0, 0),

@@ -6,11 +6,12 @@ class Config:
     seed = 42
     device = torch.device("cuda")
     num_workers = 0
-    batch_size = 4
-    n_folds = 3
+    batch_size = 2
+    n_folds = 5
     n_epochs = 2
     lr = 0.0002
     exp_name: str = "cv"
+    logdir = "./logs"
 
     model: str = "timm_effdet"
     folder = "effdet5-cutmix-augmix"
@@ -18,7 +19,7 @@ class Config:
     verbose = True
     verbose_step = 1
 
-    step_scheduler = True  # do scheduler.step after optimizer.step
+    step_scheduler = False  # do scheduler.step after optimizer.step
     validation_scheduler = True  # do scheduler.step after validation stage loss
 
     scheduler_class = torch.optim.lr_scheduler.ReduceLROnPlateau

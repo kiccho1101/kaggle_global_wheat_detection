@@ -46,7 +46,7 @@ def get_effdet_eval(checkpoint_path: str):
     model.load_state_dict(checkpoint["model_state_dict"])
 
     del checkpoint
-    gc.collect
+    gc.collect()
 
     model = DetBenchEval(model, config)
     model.eval()
