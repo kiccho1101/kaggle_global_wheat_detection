@@ -23,6 +23,7 @@ def show_eval_result(
     config: Config,
     valid_loader: DataLoader,
     tta_transforms: Optional[List[TTACompose]],
+    thresholds: List[float] = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75],
     idx_start: int = 0,
     idx_end: int = 10,
 ):
@@ -46,7 +47,7 @@ def show_eval_result(
             preds_sorted_idx = np.argsort(scores)[::-1]
             preds_sorted = preds[preds_sorted_idx]
             iou_thresholds = numba.typed.List()
-            for x in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75]:
+            for x in thresholds:
                 iou_thresholds.append(x)
 
             gts: Boxes = targets[image_index]["bboxes"].cpu().numpy()
