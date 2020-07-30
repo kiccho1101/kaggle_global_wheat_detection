@@ -24,7 +24,7 @@ class Transforms:
                     ],
                     p=0.9,
                 ),
-                A.ToGray(p=0.01),
+                A.ToGray(p=0.1),
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
                 A.Resize(height=512, width=512, p=1),

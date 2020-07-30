@@ -8,7 +8,7 @@ class Config:
     num_workers = 0
     batch_size = 2
     n_folds = 5
-    n_epochs = 2
+    n_epochs = 3
     lr = 0.0002
     exp_name: str = "cv"
     logdir = "./logs"

@@ -63,7 +63,7 @@ with timer("CV", mlflow_on=True):
                 )
 
             with timer("fit"):
-                fitter.fit(train_loader, valid_loader, with_validation=False)
+                fitter.fit(train_loader, valid_loader, with_validation=True)
 
             with timer("evaluate"):
                 precision = fitter.predict_and_evaluate(valid_loader)

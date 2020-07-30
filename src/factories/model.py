@@ -6,6 +6,7 @@ from src.config import Config
 
 if Config.model == "timm_effdet":
     sys.path.insert(0, "./input/timm-efficientdet-pytorch")
+    sys.path.insert(0, "./../input/timm-efficientdet-pytorch")
 from effdet import get_efficientdet_config, EfficientDet, DetBenchTrain, DetBenchEval
 from effdet.efficientdet import HeadNet
 

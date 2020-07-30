@@ -14,7 +14,7 @@ def run_wbf(
     skip_box_thr: float = 0.43,
     weights: Optional[int] = None,
 ) -> Tuple[Boxes, NDArray[(Any), float], NDArray[(Any), float]]:
-    bboxes: List[List[List[float]]] = [
+    bboxes: Boxes = [
         (prediction[image_index]["bboxes"] / (image_size - 1)).tolist()
         for prediction in predictions
     ]
