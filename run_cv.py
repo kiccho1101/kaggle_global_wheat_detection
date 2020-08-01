@@ -3,7 +3,7 @@ from src.factories.model import get_effdet_eval
 import numpy as np
 import pandas as pd
 from src.config import Config
-from src.utils import timer, start_mlflow, seed_everything, cp_test_image_to_train
+from src.utils import timer, start_mlflow, seed_everything
 from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
     get_data,
@@ -22,7 +22,6 @@ from typing import List
 
 config = Config(".")
 
-cp_test_image_to_train(config)
 seed_everything(config.seed)
 transforms: Transforms = get_transforms()
 start_time = datetime.datetime.now().isoformat()

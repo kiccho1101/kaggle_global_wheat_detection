@@ -8,7 +8,6 @@ import glob
 import random
 import torch
 import mlflow
-import shutil
 
 from typing import Tuple
 
@@ -46,18 +45,6 @@ def start_mlflow(config: Config) -> Tuple[str, str]:
     mlflow.start_run(experiment_id=experiment_id, run_name=run_name)
     config.log_mlflow_params()
     return experiment_id, run_name
-
-
-def cp_test_image_to_train(config: Config):
-    test_image_ids = [
-        path.split("/")[-1][:-4] for path in glob.glob(f"{config.INPUT_DIR}/test/*.jpg")
-    ]
-    for test_image_id in test_image_ids:
-        if not os.path.exists(f"{config.INPUT_DIR}/train/{test_image_id}.jpg"):
-            shutil.copy(
-                f"{config.INPUT_DIR}/test/{test_image_id}.jpg",
-                f"{config.INPUT_DIR}/train/{test_image_id}.jpg",
-            )
 
 
 def remove_empty_dirs(path: str, remain: int = 3):

@@ -27,6 +27,7 @@ class WheatDataset(Dataset):
         self.df: pd.DataFrame = df
         self.image_ids: np.ndarray = image_ids
         self.mode: str = mode
+        self.INPUT_DIR = INPUT_DIR
         self.image_dir: str = f"{INPUT_DIR}/{mode}"
         self.transforms: Optional[A.Compose] = transforms
         self.cutmix_ratio: float = cutmix_ratio
@@ -36,6 +37,13 @@ class WheatDataset(Dataset):
 
     def __getitem__(self, index: int) -> Union[torch.Tensor, Img, Dict[str, Any], str]:
         image_id: str = self.image_ids[index]
+        pseudo_test: bool = False
+        if (
+            self.mode != "test"
+            and self.df[self.df["image_id"] == image_id]["folder"].values[0]
+            == "pseudo_test"
+        ):
+            pseudo_test = True
 
         image: Img = np.array([])
         bboxes: Boxes = np.array([])
@@ -46,7 +54,7 @@ class WheatDataset(Dataset):
             if random.random() < self.cutmix_ratio:
                 image, bboxes = self._load_cutmix_image_and_boxes(index)
             else:
-                image = self._read_image(image_id)
+                image = self._read_image(image_id, pseudo_test)
                 bboxes = self.df[self.df["image_id"] == image_id][
                     ["x_min", "y_min", "x_max", "y_max"]
                 ].values
@@ -79,10 +87,15 @@ class WheatDataset(Dataset):
 
         return image, target, image_id
 
-    def _read_image(self, image_id: str) -> np.ndarray:
-        image: np.ndarray = cv2.imread(
-            f"{self.image_dir}/{image_id}.jpg", cv2.IMREAD_COLOR
-        )
+    def _read_image(self, image_id: str, pseudo_test: bool = False) -> np.ndarray:
+        if pseudo_test:
+            image: np.ndarray = cv2.imread(
+                f"{self.INPUT_DIR}/test/{image_id}.jpg", cv2.IMREAD_COLOR
+            )
+        else:
+            image: np.ndarray = cv2.imread(
+                f"{self.image_dir}/{image_id}.jpg", cv2.IMREAD_COLOR
+            )
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
         image /= 255.0
         return image

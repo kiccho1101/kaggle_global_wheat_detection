@@ -6,10 +6,10 @@ class Config:
     seed = 42
     device = torch.device("cuda")
     num_workers = 0
-    batch_size = 2
+    batch_size = 3
     n_folds = 5
-    n_epochs = 3
-    n_epochs_after_pl = 3
+    n_epochs = 1
+    n_epochs_after_pl = 1
     lr = 0.0002
     exp_name: str = "cv"
     logdir = "./logs"

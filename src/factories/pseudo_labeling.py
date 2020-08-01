@@ -15,7 +15,7 @@ def get_pseudo_train_df(
             y_max = y_min + h
             for_df.append(
                 {
-                    "image_id": "pseudo_" + image_id,
+                    "image_id": image_id,
                     "width": 1024,
                     "height": 1024,
                     "source": "",
@@ -25,6 +25,7 @@ def get_pseudo_train_df(
                     "h": h,
                     "x_max": x_max,
                     "y_max": y_max,
+                    "folder": "pseudo_test",
                 }
             )
     return pd.DataFrame(for_df)
