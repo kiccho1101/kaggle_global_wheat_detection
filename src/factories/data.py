@@ -6,43 +6,42 @@ from src.config import Config
 
 from sklearn.model_selection import StratifiedKFold
 
-from nptyping import NDArray
 
-from typing import Tuple
+from typing import Tuple, List
 
 
 class WheatData:
-    def __init__(self, INPUT_DIR: str):
-        df: pd.DataFrame = self._read_df(INPUT_DIR)
+    def __init__(self, config: Config):
+        self.config = config
+        df: pd.DataFrame = self._read_df()
 
-        self.image_ids: NDArray[np.object] = df["image_id"].unique()
+        self.image_ids: np.ndarray = df["image_id"].unique()
         self.df: pd.DataFrame = df
         self.df_folds: pd.DataFrame = self._get_df_folds(df)
 
     def get_fold(
         self, fold_num: int
-    ) -> Tuple[NDArray[np.object], pd.DataFrame, NDArray[np.object], pd.DataFrame]:
-        train_image_ids: NDArray[np.object] = self.df_folds[
-            self.df_folds["fold"] != fold_num
-        ]["image_id"].values
+    ) -> Tuple[np.ndarray, pd.DataFrame, np.ndarray, pd.DataFrame]:
+        train_image_ids: np.ndarray = self.df_folds[self.df_folds["fold"] != fold_num][
+            "image_id"
+        ].values
         train_df: pd.DataFrame = self.df[self.df["image_id"].isin(train_image_ids)]
 
-        val_image_ids: NDArray[np.object] = self.df_folds[
-            self.df_folds["fold"] == fold_num
-        ]["image_id"].values
+        val_image_ids: np.ndarray = self.df_folds[self.df_folds["fold"] == fold_num][
+            "image_id"
+        ].values
         val_df: pd.DataFrame = self.df[self.df["image_id"].isin(val_image_ids)]
 
         return train_image_ids, train_df, val_image_ids, val_df
 
-    @staticmethod
-    def _read_df(INPUT_DIR: str) -> pd.DataFrame:
+    def _read_df(self) -> pd.DataFrame:
         def _expand_bbox(x):
             r = np.array(re.findall("([0-9]+[.]?[0-9]*)", x))
             if len(r) == 0:
                 r = [-1, -1, -1, -1]
             return r
 
-        df = pd.read_csv(f"{INPUT_DIR}/train.csv")
+        df = pd.read_csv(f"{self.config.INPUT_DIR}/train.csv")
         for col in ["x", "y", "w", "h"]:
             df[col] = -1
         df[["x", "y", "w", "h"]] = np.stack(df["bbox"].apply(lambda x: _expand_bbox(x)))
@@ -55,8 +54,7 @@ class WheatData:
         df.rename({"x": "x_min", "y": "y_min"}, axis=1, inplace=True)
         return df
 
-    @staticmethod
-    def _get_df_folds(df: pd.DataFrame) -> pd.DataFrame:
+    def _get_df_folds(self, df: pd.DataFrame) -> pd.DataFrame:
         df_folds: pd.DataFrame = (
             df.groupby(["image_id", "source"])["image_id"]
             .count()
@@ -69,14 +67,18 @@ class WheatData:
         )
 
         df_folds["fold"] = 1
-        skf = StratifiedKFold(n_splits=Config().n_folds, shuffle=True, random_state=42)
-        for fold_num, (train_idx, val_idx) in enumerate(
-            skf.split(X=df_folds.index, y=df_folds["stratify_group"])
-        ):
-            df_folds.loc[df_folds.iloc[val_idx].index, "fold"] = fold_num
+
+        if self.config.n_folds != 0:
+            skf = StratifiedKFold(
+                n_splits=self.config.n_folds, shuffle=True, random_state=42
+            )
+            for fold_num, (train_idx, val_idx) in enumerate(
+                skf.split(X=df_folds.index, y=df_folds["stratify_group"])
+            ):
+                df_folds.loc[df_folds.iloc[val_idx].index, "fold"] = fold_num
 
         return df_folds
 
 
-def get_data(INPUT_DIR: str) -> WheatData:
-    return WheatData(INPUT_DIR)
+def get_data(config: Config) -> WheatData:
+    return WheatData(config)

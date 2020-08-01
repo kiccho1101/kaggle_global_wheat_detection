@@ -23,7 +23,8 @@ import mlflow.pytorch
 
 
 class Fitter:
-    def __init__(self, cv_num: int, config: Config, start_time: Optional[str]):
+    def __init__(self, cv_num: int, config: Config, start_time: Optional[str], mlflow_on: bool = True):
+        self.mlflow_on = mlflow_on
         self.config: Config = config
         self.epoch: int = 0
         self.cv_num: int = cv_num
@@ -122,7 +123,8 @@ class Fitter:
                 + f"precision: {precision}, "
             )
         avg_precision = np.mean(precisions)
-        mlflow.log_metric(f"precision_cv_{self.cv_num}", avg_precision)
+        if self.mlflow_on:
+            mlflow.log_metric(f"precision_cv_{self.cv_num}", avg_precision)
         return avg_precision
 
     def _train_one_epoch(self, train_loader: DataLoader):
@@ -168,11 +170,14 @@ class Fitter:
             if self.config.step_scheduler:
                 self.scheduler.step(metrics=summary_loss.avg)
 
-            mlflow.log_metric(
-                f"train_loss_cv_{self.cv_num}",
-                summary_loss.avg,
-                step=self.epoch * len(train_loader) + step,
-            )
+            if self.mlflow_on:
+                mlflow.log_metric(
+                    f"train_loss_cv_{self.cv_num}",
+                    summary_loss.avg,
+                    step=self.epoch * len(train_loader) + step,
+                )
+
+            break
 
         return summary_loss
 
@@ -222,11 +227,12 @@ class Fitter:
 
                 summary_loss.update(loss.detach().item(), batch_size)
 
-            mlflow.log_metric(
-                f"valid_loss_cv_{self.cv_num}",
-                summary_loss.avg,
-                step=self.epoch * len(valid_loader) + step,
-            )
+            if self.mlflow_on:
+                mlflow.log_metric(
+                    f"valid_loss_cv_{self.cv_num}",
+                    summary_loss.avg,
+                    step=self.epoch * len(valid_loader) + step,
+                )
 
         return summary_loss
 
@@ -244,5 +250,5 @@ class Fitter:
         )
 
 
-def get_fitter(cv_num: int, config: Config, start_time: Optional[str]) -> Fitter:
-    return Fitter(cv_num, config, start_time)
+def get_fitter(cv_num: int, config: Config, start_time: Optional[str], mlflow_on: bool = True) -> Fitter:
+    return Fitter(cv_num, config, start_time, mlflow_on)

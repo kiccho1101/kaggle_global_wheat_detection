@@ -1,5 +1,4 @@
 # %%
-from random import seed
 import numpy as np
 import pandas as pd
 from src.config import Config
@@ -71,3 +70,6 @@ with timer("CV", mlflow_on=True):
 
     mlflow.log_metric("precision_avg", np.mean(precisions))
 mlflow.end_run()
+
+
+# %%
