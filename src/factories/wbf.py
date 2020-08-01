@@ -2,7 +2,6 @@ import ensemble_boxes
 import numpy as np
 
 from typing import List, Dict, Optional, Tuple, Any
-from nptyping import NDArray
 from src.types import Boxes
 
 
@@ -13,7 +12,7 @@ def run_wbf(
     iou_thr: float = 0.44,
     skip_box_thr: float = 0.43,
     weights: Optional[int] = None,
-) -> Tuple[Boxes, NDArray[(Any), float], NDArray[(Any), float]]:
+) -> Tuple[Boxes, np.ndarray, np.ndarray]:
     bboxes: Boxes = [
         (prediction[image_index]["bboxes"] / (image_size - 1)).tolist()
         for prediction in predictions
