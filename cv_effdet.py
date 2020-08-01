@@ -1,8 +1,9 @@
 # %%
+from src.factories.model import get_effdet_eval
 import numpy as np
 import pandas as pd
 from src.config import Config
-from src.utils import timer, start_mlflow, seed_everything
+from src.utils import timer, start_mlflow, seed_everything, cp_test_image_to_train
 from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
     get_data,
@@ -10,6 +11,7 @@ from src.factories import (
     get_wheat_dataloader,
     get_transforms,
     get_fitter,
+    get_pseudo_train_df,
 )
 import torch
 import torch.utils
@@ -19,6 +21,8 @@ import datetime
 from typing import List
 
 config = Config(".")
+
+cp_test_image_to_train(config)
 seed_everything(config.seed)
 transforms: Transforms = get_transforms()
 start_time = datetime.datetime.now().isoformat()
@@ -58,18 +62,38 @@ with timer("CV", mlflow_on=True):
                 valid_loader = get_wheat_dataloader(valid_dataset, config, "valid")
 
                 fitter: Fitter = get_fitter(
-                    cv_num=cv_num, config=config, start_time=start_time
+                    cv_num=cv_num, config=config, start_time=start_time, mlflow_on=True
                 )
 
             with timer("fit"):
                 fitter.fit(train_loader, valid_loader, with_validation=True)
 
+            if config.pseudo_labeling:
+                with timer("pseudo_labeling"):
+                    precision, results = fitter.predict_and_evaluate(
+                        valid_loader, None, eval=True
+                    )
+                    pseudo_train_df = get_pseudo_train_df(
+                        results, config.pseudo_labeling_threshold
+                    )
+                    train_df = pd.concat([train_df, pseudo_train_df], axis=0)
+                    train_image_ids = train_df["image_id"].values
+                    train_dataset = get_wheat_dataset(
+                        config.INPUT_DIR,
+                        train_image_ids,
+                        train_df,
+                        "train",
+                        transforms.get_train_transforms(),
+                    )
+                    train_loader = get_wheat_dataloader(train_dataset, config, "train")
+
+                with timer("fit again"):
+                    fitter.config.n_epochs = config.n_epochs_after_pl
+                    fitter.fit(train_loader, valid_loader, with_validation=True)
+
             with timer("evaluate"):
-                precision = fitter.predict_and_evaluate(valid_loader)
+                precision, results = fitter.predict_and_evaluate(valid_loader)
                 precisions.append(precision)
 
     mlflow.log_metric("precision_avg", np.mean(precisions))
 mlflow.end_run()
-
-
-# %%

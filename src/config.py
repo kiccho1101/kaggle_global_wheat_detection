@@ -9,9 +9,12 @@ class Config:
     batch_size = 2
     n_folds = 5
     n_epochs = 3
+    n_epochs_after_pl = 3
     lr = 0.0002
     exp_name: str = "cv"
     logdir = "./logs"
+    pseudo_labeling: bool = True
+    pseudo_labeling_threshold: float = 0.05
 
     model: str = "timm_effdet"
     folder = "effdet5-cutmix-augmix"
@@ -48,6 +51,9 @@ class Config:
         mlflow.log_param("effdet_path", self.effdet_path)
         mlflow.log_param("n_folds", self.n_folds)
         mlflow.log_param("n_epochs", self.n_epochs)
+        mlflow.log_param("n_epochs_after_pl", self.n_epochs_after_pl)
+        mlflow.log_param("pseudo_labeling", self.pseudo_labeling)
+        mlflow.log_param("pseudo_labeling_threshold", self.pseudo_labeling_threshold)
         mlflow.log_param("lr", self.lr)
         mlflow.log_param("folder", self.folder)
         mlflow.log_param("verbose", self.verbose)
