@@ -20,8 +20,15 @@ pipenv install --skip-lock
 3. Run cross validation
 
 ```bash
-python cv_effdet.py
+python run_cv.py
 ```
+
+4. Run inference
+
+```bash
+python run_inference.py
+```
+
 ### Set up for CUDA10.1
 
 ```bash
