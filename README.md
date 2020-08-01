@@ -8,7 +8,7 @@
 pip install kaggle
 export KAGGLE_USER={user name}
 export KAGGLE_KEY={key}
-sh download.sh
+sh scripts/download.sh
 ```
 
 2. Set up python
@@ -41,3 +41,7 @@ pip install -r requirements.txt  -f https://download.pytorch.org/whl/torch_stabl
 
 - mlflow
 http://34.84.232.106:5000/
+
+```bash
+sh scripts/run_mlflow.sh
+```
