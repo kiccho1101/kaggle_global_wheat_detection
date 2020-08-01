@@ -23,7 +23,13 @@ import mlflow.pytorch
 
 
 class Fitter:
-    def __init__(self, cv_num: int, config: Config, start_time: Optional[str], mlflow_on: bool = True):
+    def __init__(
+        self,
+        cv_num: int,
+        config: Config,
+        start_time: Optional[str],
+        mlflow_on: bool = True,
+    ):
         self.mlflow_on = mlflow_on
         self.config: Config = config
         self.epoch: int = 0
@@ -62,7 +68,9 @@ class Fitter:
     ) -> None:
         for _ in range(self.config.n_epochs):
 
-            with timer(f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=True):
+            with timer(
+                f"CV {self.cv_num} epoch {self.epoch}", mlflow_on=self.mlflow_on
+            ):
                 summary_loss = self._train_one_epoch(train_loader)
 
                 if with_validation:
@@ -250,5 +258,7 @@ class Fitter:
         )
 
 
-def get_fitter(cv_num: int, config: Config, start_time: Optional[str], mlflow_on: bool = True) -> Fitter:
+def get_fitter(
+    cv_num: int, config: Config, start_time: Optional[str], mlflow_on: bool = True
+) -> Fitter:
     return Fitter(cv_num, config, start_time, mlflow_on)

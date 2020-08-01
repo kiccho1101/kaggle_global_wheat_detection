@@ -30,3 +30,12 @@ def get_wheat_dataloader(
             pin_memory=False,
             collate_fn=collate_fn,
         )
+    if mode == "test":
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_size=config.batch_size,
+            num_workers=config.num_workers,
+            shuffle=False,
+            collate_fn=collate_fn,
+            drop_last=False,
+        )

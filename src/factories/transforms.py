@@ -55,6 +55,12 @@ class Transforms:
             ),
         )
 
+    @staticmethod
+    def get_test_transforms() -> A.Compose:
+        return A.Compose(
+            [A.Resize(height=512, width=512, p=1.0), ToTensorV2(p=1.0)], p=1.0
+        )
+
 
 def get_transforms() -> Transforms:
     return Transforms()
