@@ -10,14 +10,18 @@ import numba
 from src.config import Config
 from src.utils import timer, remove_empty_dirs
 from src.types import Imgs, Boxes, Labels
-from src.factories.model import get_effdet_train, get_effdet_eval
+from src.factories.model import (
+    get_effdet_train,
+    get_effdet_eval,
+    get_effdet_train_hotstart,
+)
 from src.factories.loss_fn import get_average_meter
 from src.factories.tta import get_tta_transforms
 from src.factories.make_predictions import make_predictions
 from src.factories.wbf import run_wbf
 from src.factories.metric import calculate_image_precision
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Tuple
 import mlflow
 import mlflow.pytorch
 
@@ -53,12 +57,20 @@ class Fitter:
 
     def load_train_model(self):
         if self.config.model == "effdet" or self.config.model == "timm_effdet":
-            model = get_effdet_train(self.config.effdet_path)
-            model.to(self.config.device)
+            model = get_effdet_train(self.config.effdet_path).to(self.config.device)
         else:
-            model = get_effdet_train(self.config.effdet_path)
-            model.to(self.config.device)
+            model = get_effdet_train(self.config.effdet_path).to(self.config.device)
         return model
+
+    def set_train_model(self, model_path: str) -> None:
+        if self.config.model == "effdet" or self.config.model == "timm_effdet":
+            self.train_model = get_effdet_train_hotstart(model_path).to(
+                self.config.device
+            )
+        else:
+            self.train_model = get_effdet_train(self.config.effdet_path).to(
+                self.config.device
+            )
 
     def fit(
         self,
@@ -90,23 +102,26 @@ class Fitter:
                 self.epoch += 1
 
     def predict_and_evaluate(
-        self, valid_loader: DataLoader, checkpoint_path: Optional[str] = None
-    ) -> float:
+        self,
+        valid_loader: DataLoader,
+        checkpoint_path: Optional[str] = None,
+        eval: bool = True,
+    ) -> Tuple[float, List[List[Any]]]:
         if checkpoint_path is None:
             checkpoint_path = f"{self.log_path}/best-checkpoint_cv{self.cv_num}.bin"
 
+        results: List[List[Any]] = []
         precisions: List[float] = []
         tta_transforms = get_tta_transforms()
         model = get_effdet_eval(checkpoint_path).to(self.config.device)
-        for step, (images, targets, _) in tqdm(
+        for step, (images, targets, image_ids) in tqdm(
             enumerate(valid_loader), total=len(valid_loader)
         ):
             predictions = make_predictions(
                 model, images, tta_transforms, 0.25, self.config.device
             )
             image_precisions: List[float] = []
-            for image_index, image in enumerate(images):
-                gts: Boxes = targets[image_index]["bboxes"].cpu().numpy()
+            for image_index in range(len(images)):
                 preds, scores, _ = run_wbf(
                     predictions,
                     image_index,
@@ -118,22 +133,32 @@ class Fitter:
                 preds_sorted_idx = np.argsort(scores)[::-1]
                 preds_sorted: Boxes = preds[preds_sorted_idx]
                 iou_thresholds = numba.typed.List()
-                for x in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75]:
-                    iou_thresholds.append(x)
-                image_precision = calculate_image_precision(
-                    gts, preds_sorted, thresholds=iou_thresholds, form="pascal_voc"
+
+                results.append([image_ids[image_index], preds, scores])
+
+                if eval:
+                    gts: Boxes = targets[image_index]["bboxes"].cpu().numpy()
+                    for x in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75]:
+                        iou_thresholds.append(x)
+                    image_precision = calculate_image_precision(
+                        gts, preds_sorted, thresholds=iou_thresholds, form="pascal_voc"
+                    )
+                    image_precisions.append(image_precision)
+            if eval:
+                precision = np.mean(image_precisions)
+                precisions.append(precision)
+                print(
+                    f"CV {self.cv_num} Eval Step {step}/{len(valid_loader)}, "
+                    + f"precision: {precision}, "
                 )
-                image_precisions.append(image_precision)
-            precision = np.mean(image_precisions)
-            precisions.append(precision)
-            print(
-                f"CV {self.cv_num} Eval Step {step}/{len(valid_loader)}, "
-                + f"precision: {precision}, "
-            )
-        avg_precision = np.mean(precisions)
-        if self.mlflow_on:
-            mlflow.log_metric(f"precision_cv_{self.cv_num}", avg_precision)
-        return avg_precision
+
+        if eval:
+            avg_precision = np.mean(precisions)
+            if self.mlflow_on:
+                mlflow.log_metric(f"precision_cv_{self.cv_num}", avg_precision)
+        else:
+            avg_precision = 0
+        return avg_precision, results
 
     def _train_one_epoch(self, train_loader: DataLoader):
         self.train_model.train()
@@ -184,8 +209,6 @@ class Fitter:
                     summary_loss.avg,
                     step=self.epoch * len(train_loader) + step,
                 )
-
-            break
 
         return summary_loss
 

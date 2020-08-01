@@ -4,7 +4,7 @@ from src.visualize import imshow_with_bboxes
 import numpy as np
 import pandas as pd
 from src.config import Config
-from src.utils import timer, start_mlflow, seed_everything
+from src.utils import timer, start_mlflow, seed_everything, cp_test_image_to_train
 from src.factories import WheatData, WheatDataset, Transforms, Fitter
 from src.factories import (
     get_data,
@@ -17,6 +17,7 @@ from src.factories import (
     make_predictions,
     run_wbf,
     inference,
+    get_pseudo_train_df,
 )
 import torch
 import torch.utils
@@ -32,6 +33,8 @@ from typing import List, Dict, Any
 config = Config(".")
 
 config.n_folds = 0
+
+cp_test_image_to_train(config)
 seed_everything(config.seed)
 transforms: Transforms = get_transforms()
 start_time = datetime.datetime.now().isoformat()
@@ -70,6 +73,25 @@ with timer("prepare dataloader and fitter"):
 
 with timer("fit"):
     fitter.fit(train_loader, valid_loader, with_validation=False)
+
+if config.pseudo_labeling:
+    with timer("pseudo_labeling"):
+        precision, results = fitter.predict_and_evaluate(valid_loader, None, eval=True)
+        pseudo_train_df = get_pseudo_train_df(results, config.pseudo_labeling_threshold)
+        train_df = pd.concat([train_df, pseudo_train_df], axis=0)
+        train_image_ids = train_df["image_id"].values
+        train_dataset = get_wheat_dataset(
+            config.INPUT_DIR,
+            train_image_ids,
+            train_df,
+            "train",
+            transforms.get_train_transforms(),
+        )
+        train_loader = get_wheat_dataloader(train_dataset, config, "train")
+
+    with timer("fit again"):
+        fitter.config.n_epochs = config.n_epochs_after_pl
+        fitter.fit(train_loader, valid_loader, with_validation=False)
 
 with timer("load trained model"):
     model = get_effdet_eval(
