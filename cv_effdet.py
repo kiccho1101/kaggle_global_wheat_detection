@@ -28,7 +28,7 @@ mlflow.log_param("start_time", start_time)
 
 
 with timer("load raw data"):
-    data: WheatData = get_data(config.INPUT_DIR)
+    data: WheatData = get_data(config)
 
 
 precisions: List[float] = []

@@ -60,18 +60,22 @@ class WheatDataset(Dataset):
 
         if self.transforms:
             # Run the iteration until we find non-empty bbox
-            while True:
-                sample = self.transforms(
-                    **{"image": image, "bboxes": target["bboxes"], "labels": labels}
-                )
-                if len(sample["bboxes"]) > 0:
-                    image = sample["image"]
-                    target["bboxes"] = torch.tensor(sample["bboxes"])
-                    target["labels"] = torch.stack(sample["labels"])
-                    target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][
-                        :, [1, 0, 3, 2]
-                    ]  # to xyxy -> yxyx
-                    break
+            if self.mode == "test":
+                sample = self.transforms(**{"image": image})
+                image = sample["image"]
+            else:
+                while True:
+                    sample = self.transforms(
+                        **{"image": image, "bboxes": target["bboxes"], "labels": labels}
+                    )
+                    if len(sample["bboxes"]) > 0:
+                        image = sample["image"]
+                        target["bboxes"] = torch.tensor(sample["bboxes"])
+                        target["labels"] = torch.stack(sample["labels"])
+                        target["bboxes"][:, [0, 1, 2, 3]] = target["bboxes"][
+                            :, [1, 0, 3, 2]
+                        ]  # to xyxy -> yxyx
+                        break
 
         return image, target, image_id
 
@@ -165,9 +169,17 @@ class WheatDataset(Dataset):
 
 def get_wheat_dataset(
     INPUT_DIR: str,
-    df: pd.DataFrame,
     image_ids: np.ndarray,
+    df: pd.DataFrame,
     mode: str = "train",
     transforms: Optional[A.Compose] = None,
+    cutmix_ratio: float = 0.0,
 ):
-    return WheatDataset(INPUT_DIR, df, image_ids, mode=mode, transforms=transforms)
+    return WheatDataset(
+        INPUT_DIR,
+        image_ids,
+        df,
+        mode=mode,
+        transforms=transforms,
+        cutmix_ratio=cutmix_ratio,
+    )

@@ -9,3 +9,4 @@ from .tta import get_tta_transforms
 from .make_predictions import make_predictions
 from .wbf import run_wbf
 from .metric import calculate_image_precision
+from .inference import inference
