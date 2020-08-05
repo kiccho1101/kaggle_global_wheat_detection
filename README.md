@@ -46,9 +46,6 @@ pip install -r requirements.txt  -f https://download.pytorch.org/whl/torch_stabl
 - ちなみに今GCPでインスタンス借りてそこで回してます
 - GPUはTeslaのT4 (速いのか遅いのかわからん)
 
-- mlflow
-http://34.84.232.106:5000/
-
 ```bash
 sh scripts/run_mlflow.sh
 ```
