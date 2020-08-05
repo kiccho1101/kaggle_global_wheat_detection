@@ -26,7 +26,6 @@ class WheatData:
             "image_id"
         ].values
         train_df: pd.DataFrame = self.df[self.df["image_id"].isin(train_image_ids)]
-        train_df["folder"] = "train"
 
         val_image_ids: np.ndarray = self.df_folds[self.df_folds["fold"] == fold_num][
             "image_id"

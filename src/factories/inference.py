@@ -70,4 +70,4 @@ def inference(
                     "PredictionString": format_prediction_string(bboxes, scores),
                 }
             )
-    return pd.DataFrame(results, columns=['image_id', 'PredictionString'])
+    return pd.DataFrame(results, columns=["image_id", "PredictionString"])

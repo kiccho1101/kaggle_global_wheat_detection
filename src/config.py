@@ -6,7 +6,7 @@ class Config:
     seed = 42
     device = torch.device("cuda")
     num_workers = 0
-    batch_size = 3
+    batch_size = 2
     n_folds = 5
     n_epochs = 1
     n_epochs_after_pl = 1

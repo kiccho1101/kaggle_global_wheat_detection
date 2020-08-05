@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 import cv2
 import matplotlib.pyplot as plt
 import random
@@ -37,13 +38,6 @@ class WheatDataset(Dataset):
 
     def __getitem__(self, index: int) -> Union[torch.Tensor, Img, Dict[str, Any], str]:
         image_id: str = self.image_ids[index]
-        pseudo_test: bool = False
-        if (
-            self.mode != "test"
-            and self.df[self.df["image_id"] == image_id]["folder"].values[0]
-            == "pseudo_test"
-        ):
-            pseudo_test = True
 
         image: Img = np.array([])
         bboxes: Boxes = np.array([])
@@ -54,7 +48,7 @@ class WheatDataset(Dataset):
             if random.random() < self.cutmix_ratio:
                 image, bboxes = self._load_cutmix_image_and_boxes(index)
             else:
-                image = self._read_image(image_id, pseudo_test)
+                image = self._read_image(image_id)
                 bboxes = self.df[self.df["image_id"] == image_id][
                     ["x_min", "y_min", "x_max", "y_max"]
                 ].values
@@ -87,14 +81,14 @@ class WheatDataset(Dataset):
 
         return image, target, image_id
 
-    def _read_image(self, image_id: str, pseudo_test: bool = False) -> np.ndarray:
-        if pseudo_test:
+    def _read_image(self, image_id: str) -> np.ndarray:
+        if os.path.exists(f"{self.INPUT_DIR}/train/{image_id}.jpg"):
             image: np.ndarray = cv2.imread(
-                f"{self.INPUT_DIR}/test/{image_id}.jpg", cv2.IMREAD_COLOR
+                f"{self.INPUT_DIR}/train/{image_id}.jpg", cv2.IMREAD_COLOR
             )
         else:
             image: np.ndarray = cv2.imread(
-                f"{self.image_dir}/{image_id}.jpg", cv2.IMREAD_COLOR
+                f"{self.INPUT_DIR}/test/{image_id}.jpg", cv2.IMREAD_COLOR
             )
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
         image /= 255.0

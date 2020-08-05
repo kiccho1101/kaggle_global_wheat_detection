@@ -88,7 +88,7 @@ with timer("CV", mlflow_on=True):
 
                 with timer("fit again"):
                     fitter.config.n_epochs = config.n_epochs_after_pl
-                    fitter.fit(train_loader, valid_loader, with_validation=True)
+                    fitter.fit(train_loader, valid_loader, with_validation=False)
 
             with timer("evaluate"):
                 precision, results = fitter.predict_and_evaluate(valid_loader)

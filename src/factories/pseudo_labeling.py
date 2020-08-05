@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from typing import Any, List
 
@@ -9,10 +10,12 @@ def get_pseudo_train_df(
     for image_id, bboxes, scores in results:
         bboxes = bboxes[scores >= float(threshold)]
         scores = scores[scores >= float(threshold)]
+        bboxes = (bboxes * 2).astype(np.int32).clip(min=0, max=1023)
         for bbox in bboxes:
-            x_min, y_min, w, h = bbox
-            x_max = x_min + w
-            y_max = y_min + h
+            x_min, y_min, x_max, y_max = bbox
+            w = x_max - x_min
+            h = y_max - y_min
+
             for_df.append(
                 {
                     "image_id": image_id,
@@ -25,7 +28,6 @@ def get_pseudo_train_df(
                     "h": h,
                     "x_max": x_max,
                     "y_max": y_max,
-                    "folder": "pseudo_test",
                 }
             )
     return pd.DataFrame(for_df)
