@@ -1,5 +1,5 @@
 opencv-python
-torch==1.5.1+cu101
+torch==2.2.0
 torchvision==0.6.1+cu101
 scikit-learn
 seaborn
